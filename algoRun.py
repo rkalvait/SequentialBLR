@@ -111,7 +111,7 @@ initTraining = 0
 
 while startTime < endTime:
 
-    if(rowCount % 150 == 0):
+    if(rowCount % 250 == 0):
         print "trying time: %s " % startTime
 
     #Build the query:
@@ -163,12 +163,20 @@ while startTime < endTime:
         data = np.concatenate((data, X[0:(rowCount % matrixLength), 0:len(columns)-1]), axis=0)
         y = X[(rowCount % matrixLength):, len(columns)-1]
         y = np.concatenate((y, X[:(rowCount % matrixLength), len(columns)-1]), axis=0)
-        if(not initTraining and runnable(data) > 0.5):
+        if(initTraining or runnable(data) > 0.5):
             #'Unwrap' the data matrices
             #time = Xt[(rowCount % matrixLength):]
             #time += Xt[:(rowCount % matrixLength)]
             w_opt, a_opt, b_opt, S_N = train(data, y)
             initTraining = 1
+#            if startTime > dt.datetime.strptime("2012-05-31 03:11:03", "%Y-%m-%d %H:%M:%S") and startTime < dt.datetime.strptime("2012-05-31 23:11:03", "%Y-%m-%d %H:%M:%S"):
+##                print startTime
+##                print w_opt
+##                print a_opt
+##                print b_opt
+#                if b_opt > 1:
+#                    print data
+
     
     #make prediction:
     if(initTraining):
@@ -235,7 +243,7 @@ print "-------------------------------------------------------------------------
 # red dashes, blue squares and green triangles
 #plt.plot(y_time, y_target, 'r--', y_time, y_predictions, 'b--')
 plt.plot(y_time, y_target_smoothed, 'r--', y_time, y_predictions_smoothed, 'b--')
-plt.ylim([0,15000])
+#plt.ylim([0,15000])
 plt.show()
 
 cursor.close()

@@ -4,9 +4,9 @@
   "forecastingInterval": "2",
   "idSelection": "1-15",
   "totalConsum": "circuitGrid",
-  "specifyTime": "0",
-  "beginTime" : "2012-05-30 05:16:03",
-  "endTime": "2012-06-12 04:34:25",
+  "specifyTime": "1",
+  "beginTime" : "2012-05-15 05:16:03",
+  "endTime": "2012-06-1 04:34:25",
   "data": [
     {
      "idNumber" : "1",
@@ -136,122 +136,122 @@
     },
     {
      "idNumber" : "22",
-     "startTime":"",
-     "endTime": "",
+     "startTime":"2012-04-30 05:16:03",
+     "endTime": "2012-07-31 04:34:24",
      "columnName": "circuitMasterBathOutlets"
     },
     {
      "idNumber" : "23",
-     "startTime":"",
-     "endTime": "",
+     "startTime":"2012-04-30 05:16:03",
+     "endTime": "2012-07-31 05:13:02",
      "columnName": "circuitLivingRoomPatioLights"
     },
     {
      "idNumber" : "24",
-     "startTime":"",
-     "endTime": "",
+     "startTime": "2012-04-30 05:16:03",
+     "endTime": "2012-07-31 05:12:42",
      "columnName": "circuitGuestBathHallLights"
     },
     {
      "idNumber" : "25",
-     "startTime":"",
-     "endTime": "",
+     "startTime": "2012-04-30 05:16:03",
+     "endTime": "2012-07-31 05:12:42",
      "columnName": "circuitDiningRoomOutlets"
     },
     {
      "idNumber" : "26",
-     "startTime":"",
-     "endTime": "",
+     "startTime": "2012-04-30 05:20:00",
+     "endTime": "2012-07-31 05:15:00",
      "columnName": "environmentHeatindex"
     },
     {
      "idNumber" : "27",
-     "startTime":"",
-     "endTime": "",
+     "startTime": "2012-04-30 05:20:00",
+     "endTime": "2012-07-31 05:15:00",
      "columnName": "environmentInsideHumidity"
     },
     {
      "idNumber" : "28",
-     "startTime":"",
-     "endTime": "",
+     "startTime":"2012-04-30 05:20:00 ",
+     "endTime": "2012-07-31 05:15:00",
      "columnName": "environmentInsideTemp"
     },
     {
      "idNumber" : "29",
-     "startTime":"",
-     "endTime": "",
+     "startTime": "2012-04-30 05:20:0",
+     "endTime": "2012-07-31 05:15:00",
      "columnName": "environmentOutsideHumidity"
     },
     {
      "idNumber" : "30",
-     "startTime":"",
-     "endTime": "",
+     "startTime":"2012-04-30 05:20:00",
+     "endTime": "2012-07-31 05:15:00",
      "columnName": "environmentOutsideTemp"
     },
     {
      "idNumber" : "31",
-     "startTime":"",
-     "endTime": "",
+     "startTime": "2012-04-30 05:20:00",
+     "endTime": "2012-07-31 05:15:00",
      "columnName": "environmentRain"
     },
     {
      "idNumber" : "32",
-     "startTime":"",
-     "endTime": "",
+     "startTime": "2012-04-30 05:20:00",
+     "endTime": "2012-07-31 05:15:00",
      "columnName": "environmentRainRate"
     },
     {
      "idNumber" : "33",
-     "startTime":"",
-     "endTime": "",
+     "startTime":"2012-04-30 05:20:0",
+     "endTime": "2012-07-31 05:15:00",
      "columnName": "environmentWindChill"
     },
     {
      "idNumber" : "34",
-     "startTime":"",
-     "endTime": "",
+     "startTime": "2012-04-30 05:20:00",
+     "endTime": "2012-07-31 04:35:00",
      "columnName": "environmentWindDirectionDegrees"
     },
     {
      "idNumber" : "35",
-     "startTime":"",
-     "endTime": "",
+     "startTime":"2012-04-30 05:20:00",
+     "endTime": "2012-07-31 05:15:00",
      "columnName": "environmentWindGust"
     },
     {
      "idNumber" : "36",
-     "startTime":"",
-     "endTime": "",
+     "startTime": "2012-04-30 05:20:00",
+     "endTime": "2012-07-31 04:35:00",
      "columnName": "environmentWindGustDirectionDegrees"
     },
     {
      "idNumber" : "37",
-     "startTime":"",
-     "endTime": "",
+     "startTime": "2012-04-30 05:20:00",
+     "endTime": "2012-07-31 05:15:00",
      "columnName": "environmentWindSpeed"
     },
     {
      "idNumber" : "38",
-     "startTime":"",
-     "endTime": "",
+     "startTime":"2012-04-30 07:35:13",
+     "endTime": "2012-07-30 22:00:16",
      "columnName": "motionBasement"
     },
     {
      "idNumber" : "39",
-     "startTime":"",
-     "endTime": "",
+     "startTime": "2012-06-07 15:23:40",
+     "endTime": "2012-07-30 23:48:53",
      "columnName": "motionBedroom"
     },
     {
      "idNumber" : "40",
-     "startTime":"",
-     "endTime": "",
+     "startTime":"2012-06-07 09:50:36",
+     "endTime": "2012-07-31 02:36:07",
      "columnName": "motionGuest"
     },
     {
      "idNumber" : "41",
-     "startTime":"",
-     "endTime": "",
+     "startTime":"2012-06-07 09:10:20",
+     "endTime": "2012-07-27 12:19:48",
      "columnName": "motionKitchen"
     },
     {
@@ -262,8 +262,8 @@
     },
     {
      "idNumber" : "43",
-     "startTime":"",
-     "endTime": "",
+     "startTime":"2012-04-30 06:31:39",
+     "endTime": "2012-07-31 05:10:13",
      "columnName": "motionMaster"
     }
  ]
