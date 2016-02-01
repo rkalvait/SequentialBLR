@@ -1,0 +1,270 @@
+{
+	"granularity": "5",
+	"windowSize": "12",
+  "forecastingInterval": "2",
+  "idSelection": "1-15",
+  "totalConsum": "circuitGrid",
+  "specifyTime": "0",
+  "beginTime" : "2012-05-30 05:16:03",
+  "endTime": "2012-06-12 04:34:25",
+  "data": [
+    {
+     "idNumber" : "1",
+     "startTime": "2012-04-30 05:16:03",
+     "endTime": "2012-07-31 04:34:25",
+     "columnName": "circuitOutsideOutlets"
+    },
+    {
+     "idNumber" : "2",
+     "startTime": "2012-04-30 05:16:03",
+     "endTime": "2012-07-30 21:59:56",
+     "columnName": "circuitCellarLights"
+    },
+    {
+     "idNumber" : "3",
+     "startTime": "2012-04-30 05:16:03",
+     "endTime": "2012-07-31 05:15:31",
+     "columnName": "circuitFurnaceHRV"
+    },
+    {
+     "idNumber" : "4",
+     "startTime": "2012-04-30 05:16:13",
+     "endTime": "2012-07-31 05:12:14",
+     "columnName": "circuitCellarOutlets"
+    },
+    {
+     "idNumber" : "5",
+     "startTime": "2012-04-30 05:16:13",
+     "endTime": "2012-07-30 05:18:40",
+     "columnName": "circuitWashingMachine"
+    },
+    {
+     "idNumber" : "6",
+     "startTime":"2012-04-30 05:16:13",
+     "endTime": "2012-07-31 04:59:34",
+     "columnName": "circuitFridgeRange"
+    },
+    {
+     "idNumber" : "7",
+     "startTime":"2012-04-30 05:16:13",
+     "endTime": "2012-07-30 19:38:08",
+     "columnName": "circuitDisposalDishwasher"
+    },
+    {
+     "idNumber" : "8",
+     "startTime": "2012-04-30 05:16:13",
+     "endTime": "2012-07-30 19:27:46",
+     "columnName": "circuitMicrowave"
+    },
+    {
+     "idNumber" : "9",
+     "startTime":"2012-04-30 05:16:13",
+     "endTime": "2012-07-31 04:37:01",
+     "columnName": "circuitKitchenLights"
+    },
+    {
+     "idNumber" : "10",
+     "startTime": "2012-04-30 05:16:13",
+     "endTime": "2012-07-31 05:12:49",
+     "columnName": "circuitBedroomOutlets"
+    },
+    {
+     "idNumber" : "11",
+     "startTime":"2012-04-30 05:16:13",
+     "endTime": "2012-07-31 05:12:49",
+     "columnName": "circuitBedroomLights"
+    },
+    {
+     "idNumber" : "12",
+     "startTime":"2012-04-30 05:16:13",
+     "endTime": "2012-07-31 05:15:25",
+     "columnName": "circuitMasterOutlets"
+    },
+    {
+     "idNumber" : "13",
+     "startTime":"2012-04-30 05:16:13",
+     "endTime": "2012-07-30 10:15:47",
+     "columnName": "circuitMasterLights"
+    },
+    {
+     "idNumber" : "14",
+     "startTime":"2012-04-30 05:16:13",
+     "endTime": "2012-07-30 05:18:40",
+     "columnName": "circuitDuctHeaterHRV"
+    },
+    {
+     "idNumber" : "15",
+     "startTime":"2012-04-30 05:16:13",
+     "endTime": "2012-07-30 22:04:12",
+     "columnName": "circuitCounterOutlets1"
+    },
+    {
+     "idNumber" : "16",
+     "startTime":"2012-04-30 05:16:13",
+     "endTime": "2012-07-30 23:54:09",
+     "columnName": "circuitCounterOutlets2"
+    },
+    {
+     "idNumber" : "17",
+     "startTime":"2012-04-30 05:16:13",
+     "endTime": "2012-07-31 05:15:31",
+     "columnName": "circuitKitchenOutlets"
+    },
+    {
+     "idNumber" : "18",
+     "startTime":"2012-04-30 05:16:03",
+     "endTime": "2012-07-31 05:15:04",
+     "columnName": "circuitDryer"
+    },
+    {
+     "idNumber" : "19",
+     "startTime": "2012-04-30 05:16:03",
+     "endTime": "2012-07-31 05:13:02",
+     "columnName": "circuitOfficeOutlets"
+    },
+    {
+     "idNumber" : "20",
+     "startTime":"2012-04-30 05:16:03",
+     "endTime": "2012-07-31 05:13:02",
+     "columnName": "circuitLivingRoomOutlets"
+    },
+    {
+     "idNumber" : "21",
+     "startTime": "2012-04-30 05:16:03",
+     "endTime": "2012-07-30 23:01:10",
+     "columnName": "circuitGuestBathOutlets"
+    },
+    {
+     "idNumber" : "22",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "circuitMasterBathOutlets"
+    },
+    {
+     "idNumber" : "23",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "circuitLivingRoomPatioLights"
+    },
+    {
+     "idNumber" : "24",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "circuitGuestBathHallLights"
+    },
+    {
+     "idNumber" : "25",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "circuitDiningRoomOutlets"
+    },
+    {
+     "idNumber" : "26",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "environmentHeatindex"
+    },
+    {
+     "idNumber" : "27",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "environmentInsideHumidity"
+    },
+    {
+     "idNumber" : "28",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "environmentInsideTemp"
+    },
+    {
+     "idNumber" : "29",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "environmentOutsideHumidity"
+    },
+    {
+     "idNumber" : "30",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "environmentOutsideTemp"
+    },
+    {
+     "idNumber" : "31",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "environmentRain"
+    },
+    {
+     "idNumber" : "32",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "environmentRainRate"
+    },
+    {
+     "idNumber" : "33",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "environmentWindChill"
+    },
+    {
+     "idNumber" : "34",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "environmentWindDirectionDegrees"
+    },
+    {
+     "idNumber" : "35",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "environmentWindGust"
+    },
+    {
+     "idNumber" : "36",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "environmentWindGustDirectionDegrees"
+    },
+    {
+     "idNumber" : "37",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "environmentWindSpeed"
+    },
+    {
+     "idNumber" : "38",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "motionBasement"
+    },
+    {
+     "idNumber" : "39",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "motionBedroom"
+    },
+    {
+     "idNumber" : "40",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "motionGuest"
+    },
+    {
+     "idNumber" : "41",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "motionKitchen"
+    },
+    {
+     "idNumber" : "42",
+     "startTime":"2012-06-07 09:28:48",
+     "endTime": "2012-07-28 18:34:41",
+     "columnName": "motionLivingroom"
+    },
+    {
+     "idNumber" : "43",
+     "startTime":"",
+     "endTime": "",
+     "columnName": "motionMaster"
+    }
+ ]
+}
