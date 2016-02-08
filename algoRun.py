@@ -106,9 +106,14 @@ print "Beginning analysis."
 y_predictions = []
 y_target = []
 y_time = []
+w_opt = []
+a_opt = 0
+b_opt = 0
 rowCount = 1
 initTraining = 0
 
+
+count123 = 1 #for debug
 while startTime < endTime:
 
     if(rowCount % 250 == 0):
@@ -129,7 +134,7 @@ while startTime < endTime:
     #Execute the query:
     cursor.execute(qry , (startTime, startTime + dt.timedelta(0,granularityInSeconds)))
 
-    #Get the average in the queried window:
+    #Get the average in the queried window: (should probably switch this to be done by qry)
     colSum = np.zeros(len(columns))
     colCount = np.zeros(len(columns))
     for row in cursor:
@@ -169,15 +174,25 @@ while startTime < endTime:
             #time += Xt[:(rowCount % matrixLength)]
             w_opt, a_opt, b_opt, S_N = train(data, y)
             initTraining = 1
-#            if startTime > dt.datetime.strptime("2012-05-31 03:11:03", "%Y-%m-%d %H:%M:%S") and startTime < dt.datetime.strptime("2012-05-31 23:11:03", "%Y-%m-%d %H:%M:%S"):
-##                print startTime
-##                print w_opt
-##                print a_opt
-##                print b_opt
+#            if startTime > dt.datetime.strptime("2012-05-07 10:00:03", "%Y-%m-%d %H:%M:%S") and startTime < dt.datetime.strptime("2012-05-07 10:30:03", "%Y-%m-%d %H:%M:%S"):
+#                text = "test" + str(count123) + ".txt"
+#                np.savetxt(text, data, fmt='%10.5f', delimiter=',')   # X is an array
+#                print startTime
+#                print "W_OPT %s " % w_opt
+#                print "ALPHA %s " % a_opt
+#                print "BETA %s " % b_opt
+#                print count123
+#                count123 = count123 + 1
 #                if b_opt > 1:
 #                    print data
 
-    
+#            if startTime > dt.datetime.strptime("2012-05-22 23:00:03", "%Y-%m-%d %H:%M:%S") and startTime < dt.datetime.strptime("2012-05-23 21:30:03", "%Y-%m-%d %H:%M:%S"):
+#                print startTime
+#                print "W_OPT %s " % w_opt
+#                print "ALPHA %s " % a_opt
+#                print "BETA %s " % b_opt
+
+
     #make prediction:
     if(initTraining):
         x_n = X[(rowCount-1) % matrixLength][:len(columns)-1]
@@ -188,6 +203,11 @@ while startTime < endTime:
         y_time.append(Xt[(rowCount-1) % matrixLength])
         y_predictions.append(max(0, np.inner(w_opt,x_n)))
         y_target.append(X[(rowCount-1) % matrixLength][len(columns)-1])
+
+
+#        if startTime > dt.datetime.strptime("2012-05-07 10:00:03", "%Y-%m-%d %H:%M:%S") and startTime < dt.datetime.strptime("2012-05-07 10:30:03", "%Y-%m-%d %H:%M:%S"):
+#            print startTime
+#            print x_n
 
     #Increment and loop
     startTime += dt.timedelta(0,granularityInSeconds)
@@ -234,11 +254,11 @@ smse.append(SMSE)
 
 print "PMSE for smoothed: %d" % (PMSE_score_smoothed)
 print "PMSE for nonsmoothed: %d" % (PMSE_score)
-print "--------------------------------------------------------------------------------------------------------------------------------------"
+print "------------------------------------------------------------------------------------------------------"
 print "%20s |%20s |%25s |%20s" % ("RMSE-score (smoothed)", "RMSE-score (raw)", "Relative MSE", "SMSE")
-print "%20.2f |%20.2f |%25.2f |%20.2f " % (np.mean(np.asarray(rmse_smoothed)), np.mean(np.asarray(rmse)), np.mean(np.asarray(Re_mse)), np.mean(np.asarray(smse)))
+print "%20.2f  |%20.2f |%25.2f |%20.2f " % (np.mean(np.asarray(rmse_smoothed)), np.mean(np.asarray(rmse)), np.mean(np.asarray(Re_mse)), np.mean(np.asarray(smse)))
 
-print "--------------------------------------------------------------------------------------------------------------------------------------"
+print "------------------------------------------------------------------------------------------------------"
 
 # red dashes, blue squares and green triangles
 #plt.plot(y_time, y_target, 'r--', y_time, y_predictions, 'b--')

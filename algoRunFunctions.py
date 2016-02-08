@@ -42,11 +42,7 @@ def train(X, y):
     while( k < max_iter and np.linalg.norm(ab_old-ab_new) > tolerance):
         k += 1
         try:
-#            print "derp"
-#            #print (alpha*np.eye(M) + beta*PhiT_Phi).shape()
-#            print alpha*np.eye(M)
-#            print "derp2"
-#            print beta*PhiT_Phi
+
             S_N = np.linalg.inv(alpha*np.eye(M) + beta*PhiT_Phi)
         except np.linalg.LinAlgError as err:
             print  "******************************************************************************************************"
@@ -70,6 +66,7 @@ def train(X, y):
     S_N = np.linalg.inv(alpha*np.eye(M) + beta*PhiT_Phi)
     m_N = beta * np.dot(S_N, np.dot(np.transpose(Phi), t))
     w_opt = m_N
+    
     return (w_opt, alpha, beta, S_N)
 
 
