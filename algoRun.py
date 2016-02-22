@@ -6,6 +6,11 @@ import datetime as dt
 from algoRunFunctions import movingAverage
 from algoRunFunctions import train
 from algoRunFunctions import runnable
+from algoRunFunctions import severityMetric
+from datetime import date
+import random
+import scipy as sp
+import scipy.stats
 
 import matplotlib.pyplot as plt
 
@@ -49,7 +54,6 @@ forecastingInterval = int(jsonDataFile["forecastingInterval"])*60/int(jsonDataFi
 inputIDs = jsonDataFile["idSelection"]
 inputIDs = inputIDs.split(',')
 idArray = []
-
 #Create a list of ID numbers, given input.
 #interprets 1-3 to include 1,2,3.
 for selection in inputIDs:
@@ -74,16 +78,28 @@ endTimeList = []
 columns = []
 lastData = [] #Data point of last valid timestamp - init garbage
 lastDataTime = [] #Timestamp of last valid timestamp - init very old [TODO]
+shouldBeRounded = []
+countNoData = [] #fordebug
+severityArray = []
 for sensorID in idArray:
+    if "circuit" in jsonDataFile["data"][sensorID-1]["columnName"]:
+        shouldBeRounded.append(1)
+    else:
+        shouldBeRounded.append(0)
     columns.append(jsonDataFile["data"][sensorID-1]["columnName"])
     startTimeList.append(jsonDataFile["data"][sensorID-1]["startTime"])
     endTimeList.append(jsonDataFile["data"][sensorID-1]["endTime"])
     lastDataTime.append(dt.datetime.min)
     lastData.append(-1)
+    countNoData.append(0) #fordebug
+
+countNoData.append(0) #fordebug
+
 
 #Add total energy consumption column:
 columns.append(jsonDataFile["totalConsum"]);
 lastData.append(-1)
+shouldBeRounded.append(1)
 lastDataTime.append(dt.datetime.min)
 
 #Find latest start time, earliest end time.
@@ -111,7 +127,11 @@ a_opt = 0
 b_opt = 0
 rowCount = 1
 initTraining = 0
-
+notRunnableCount = 0
+mu = 0; sigma = 1000
+w, L = (.84, 3.719) # EWMA parameters. Other pairs can also be used, see paper
+Sn_1 = 0
+p_array = []
 
 count123 = 1 #for debug
 while startTime < endTime:
@@ -141,6 +161,8 @@ while startTime < endTime:
         i = 0
         for columnData in row:
             if columnData is not None:
+                if shouldBeRounded[i] == 1 and columnData < 0:
+                    columnData = 0
                 colSum[i] += columnData
                 colCount[i] += 1
             i += 1
@@ -160,7 +182,9 @@ while startTime < endTime:
             lastDataTime[i] = startTime
         #No new data.
         else:
-            X[(rowCount-1) % matrixLength][i] = lastData[i]
+            #X[(rowCount-1) % matrixLength][i] = lastData[i]
+            X[(rowCount-1) % matrixLength][i] = 0
+            countNoData[i] += 1
 
     # Time to train:
     if(rowCount % forecastingInterval == 0 and rowCount >= matrixLength):
@@ -174,7 +198,7 @@ while startTime < endTime:
             #time += Xt[:(rowCount % matrixLength)]
             w_opt, a_opt, b_opt, S_N = train(data, y)
             initTraining = 1
-#            if startTime > dt.datetime.strptime("2012-05-07 10:00:03", "%Y-%m-%d %H:%M:%S") and startTime < dt.datetime.strptime("2012-05-07 10:30:03", "%Y-%m-%d %H:%M:%S"):
+#            if startTime > dt.datetime.strptime("2012-05-17 06:30:03", "%Y-%m-%d %H:%M:%S") and startTime < dt.datetime.strptime("2012-05-17 10:30:03", "%Y-%m-%d %H:%M:%S"):
 #                text = "test" + str(count123) + ".txt"
 #                np.savetxt(text, data, fmt='%10.5f', delimiter=',')   # X is an array
 #                print startTime
@@ -186,28 +210,38 @@ while startTime < endTime:
 #                if b_opt > 1:
 #                    print data
 
-#            if startTime > dt.datetime.strptime("2012-05-22 23:00:03", "%Y-%m-%d %H:%M:%S") and startTime < dt.datetime.strptime("2012-05-23 21:30:03", "%Y-%m-%d %H:%M:%S"):
-#                print startTime
-#                print "W_OPT %s " % w_opt
-#                print "ALPHA %s " % a_opt
-#                print "BETA %s " % b_opt
+        elif(runnable(data) < 0.5):
+            notRunnableCount += 1
+            if(notRunnableCount > 5):
+                print "Data not runnable too many times! Exiting..."
 
+    if(not initTraining):
+        severityArray.append(0)
 
     #make prediction:
     if(initTraining):
         x_n = X[(rowCount-1) % matrixLength][:len(columns)-1]
-        #y_predictions[n] = max(0, np.inner(w_opt,x_n))
-        #error = (y_predictions[n]-y_target[n])
-        #sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
 
         y_time.append(Xt[(rowCount-1) % matrixLength])
         y_predictions.append(max(0, np.inner(w_opt,x_n)))
         y_target.append(X[(rowCount-1) % matrixLength][len(columns)-1])
 
+#        if(X[(rowCount-1) % matrixLength][len(columns)-1] - max(0, np.inner(w_opt,x_n)) > 1000):
+#            print lastDataTime
 
-#        if startTime > dt.datetime.strptime("2012-05-07 10:00:03", "%Y-%m-%d %H:%M:%S") and startTime < dt.datetime.strptime("2012-05-07 10:30:03", "%Y-%m-%d %H:%M:%S"):
-#            print startTime
-#            print x_n
+
+        error = (y_predictions[-1]-y_target[-1])
+        sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
+        if sigma < 1: sigma = 1 # Catching pathogenic cases where variance (ie, sigma) gets really really small
+
+        # Update severity metric
+        mu = mu; sigma = sigma
+        Sn, Zn = severityMetric(error, mu, sigma, w, Sn_1)
+        severityArray.append(Sn)
+        #Zscore_array[n] = Zn
+        Sn_1 = Sn
+        p = 1 - sp.stats.norm.cdf(error, mu, sigma)
+        p_array.append(p)
 
     #Increment and loop
     startTime += dt.timedelta(0,granularityInSeconds)
@@ -252,6 +286,9 @@ Re_mse.append(Re_MSE)
 smse.append(SMSE)
 
 
+print "Count no data:"
+print countNoData
+
 print "PMSE for smoothed: %d" % (PMSE_score_smoothed)
 print "PMSE for nonsmoothed: %d" % (PMSE_score)
 print "------------------------------------------------------------------------------------------------------"
@@ -260,11 +297,77 @@ print "%20.2f  |%20.2f |%25.2f |%20.2f " % (np.mean(np.asarray(rmse_smoothed)), 
 
 print "------------------------------------------------------------------------------------------------------"
 
+
+OBSERVS_PER_HR = 60 / int(jsonDataFile["granularity"])
+axescolor  = '#f6f6f6'  # the axes background color
+distance = n_samples//5
+tick_pos = [t for t in range(distance,n_samples,distance)]
+tick_labels = [y_time[t] for t in tick_pos]
+GRAY = '#666666'
+
+plt.rc('axes', grid=False)
+plt.rc('grid', color='0.75', linestyle='-', linewidth=0.5)
+textsize = 9
+left, width = 0.1, 0.8
+rect1 = [left, 0.7, width, 0.2]
+rect2 = [left, 0.3, width, 0.4]
+fig = plt.figure(facecolor='white')
+axescolor  = '#f6f6f6'  # the axes background color
+ax1 = fig.add_axes(rect1, axisbg=axescolor)  #left, bottom, width, height
+ax2 = fig.add_axes(rect2, axisbg=axescolor, sharex=ax1)
+y_target[:training] = 0
+ax1.plot((movingAverage(y_predictions, smoothing_win) - movingAverage(y_target, smoothing_win)),"r-", lw=2)
+ax1.set_yticks([-500, 0, 500])
+ax1.set_yticklabels([-.5, 0, .5])
+ax1.set_ylim(-1000, 1000)
+ax1.set_ylabel("Error (KW)")
+ax2.plot(movingAverage(y_predictions, smoothing_win),color=GRAY, lw=2, label = 'Prediction')
+ax2.plot(movingAverage(y_target, smoothing_win), "r--", label = 'Target')
+ax2.set_yticks([2000, 4000, 6000])
+ax2.set_yticklabels([2, 4, 6])
+ax2.set_ylabel("Power (KW)")
+ax2.set_xlim(0,len(y_target))
+ax2.legend(loc='upper left')
+
+# turn off upper axis tick labels, rotate the lower ones, etc
+for ax in ax1, ax2:
+    for label in ax.get_xticklabels():
+        label.set_visible(False)
+
+plt.savefig('./figures/blr_detection_umass2.pdf')
+
+
+
+
+plt.rc('axes', grid=False)
+plt.rc('grid', color='0.75', linestyle='-', linewidth=0.5)
+textsize = 9
+left, width = 0.1, 0.8
+rect1 = [left, 0.1, width, 0.8]
+fig = plt.figure(facecolor='white')
+axescolor  = '#f6f6f6'  # the axes background color
+ax1 = fig.add_axes(rect1, axisbg=axescolor)  #left, bottom, width, height
+
+#    #fig, ax = plt.subplots(nrows=1, ncols=1)
+p_array = np.asarray(p_array)
+hist, bin_edges = np.histogram(p_array, density=True)
+numBins = 200
+ax1.hist(p_array, numBins,color=GRAY, alpha=0.7)
+ax1.set_ylabel("P-value distribution")
+plt.savefig('./figures/pvalue_distribution_under_H0.pdf')
+
+
+
+
+
 # red dashes, blue squares and green triangles
 #plt.plot(y_time, y_target, 'r--', y_time, y_predictions, 'b--')
 plt.plot(y_time, y_target_smoothed, 'r--', y_time, y_predictions_smoothed, 'b--')
 #plt.ylim([0,15000])
 plt.show()
+
+
+
 
 cursor.close()
 cnx.close()

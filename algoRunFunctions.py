@@ -2,7 +2,10 @@ from urllib import urlopen
 import json
 import numpy as np
 import sys
+import scipy as sp
+import scipy.stats
 
+debug = 0
 
 def movingAverage(interval, window_size):
     window= np.ones(int(window_size))/float(window_size)
@@ -72,10 +75,9 @@ def train(X, y):
 
 
 
-def severity_metric(error, mu, sigma, w, Sn_1):
+def severityMetric(error, mu, sigma, w, Sn_1):
     # This function returns the values of the EWMA control chart. It returns the
     # Sn values, as described in the paper.
-    #
     
     if error < mu: # left-tailed
         p_value = sp.stats.norm.cdf(error, mu, sigma)

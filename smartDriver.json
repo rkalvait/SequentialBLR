@@ -2,11 +2,11 @@
 	"granularity": "1",
 	"windowSize": "24",
   "forecastingInterval": "1",
-  "idSelection": "1-21, 23-25",
+  "idSelection": "1-25",
   "totalConsum": "circuitGrid",
   "specifyTime": "1",
-  "beginTime" : "2012-05-05 01:00:00",
-  "endTime": "2012-05-09 09:00:00",
+  "beginTime" : "2012-05-01 01:00:00",
+  "endTime": "2012-05-08 09:00:00",
   "data": [
     {
      "idNumber" : "1",
@@ -172,7 +172,7 @@
     },
     {
      "idNumber" : "28",
-     "startTime":"2012-04-30 05:20:00 ",
+     "startTime": "2012-04-30 05:20:00",
      "endTime": "2012-07-31 05:15:00",
      "columnName": "environmentInsideTemp"
     },
