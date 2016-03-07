@@ -13,6 +13,7 @@ import scipy as sp
 import scipy.stats
 
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 print "Starting algorithm run..."
 
@@ -42,7 +43,7 @@ cnx = mysql.connector.connect(**config)
 cursor = cnx.cursor()
 print "Connection made to DB."
 
-with open('/Users/dvorva/Documents/getGraphiteData/sequentialBLR/smartDriver.json') as data_file:
+with open('/Users/dvorva/Documents/Research/getGraphiteData/sequentialBLR/smartDriver.json') as data_file:
     jsonDataFile = json.load(data_file)
 print "Found JSON file."
 
@@ -221,15 +222,9 @@ while startTime < endTime:
     #make prediction:
     if(initTraining):
         x_n = X[(rowCount-1) % matrixLength][:len(columns)-1]
-
         y_time.append(Xt[(rowCount-1) % matrixLength])
         y_predictions.append(max(0, np.inner(w_opt,x_n)))
         y_target.append(X[(rowCount-1) % matrixLength][len(columns)-1])
-
-#        if(X[(rowCount-1) % matrixLength][len(columns)-1] - max(0, np.inner(w_opt,x_n)) > 1000):
-#            print lastDataTime
-
-
         error = (y_predictions[-1]-y_target[-1])
         sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
         if sigma < 1: sigma = 1 # Catching pathogenic cases where variance (ie, sigma) gets really really small
@@ -291,11 +286,11 @@ print countNoData
 
 print "PMSE for smoothed: %d" % (PMSE_score_smoothed)
 print "PMSE for nonsmoothed: %d" % (PMSE_score)
-print "------------------------------------------------------------------------------------------------------"
+print "-------------------------------------------------------------------------------------------------"
 print "%20s |%20s |%25s |%20s" % ("RMSE-score (smoothed)", "RMSE-score (raw)", "Relative MSE", "SMSE")
 print "%20.2f  |%20.2f |%25.2f |%20.2f " % (np.mean(np.asarray(rmse_smoothed)), np.mean(np.asarray(rmse)), np.mean(np.asarray(Re_mse)), np.mean(np.asarray(smse)))
 
-print "------------------------------------------------------------------------------------------------------"
+print "-------------------------------------------------------------------------------------------------"
 
 
 OBSERVS_PER_HR = 60 / int(jsonDataFile["granularity"])
@@ -310,7 +305,8 @@ plt.rc('grid', color='0.75', linestyle='-', linewidth=0.5)
 textsize = 9
 left, width = 0.1, 0.8
 rect1 = [left, 0.7, width, 0.2]
-rect2 = [left, 0.3, width, 0.4]
+rect2 = [left, 0.1, width, 0.5]
+
 fig = plt.figure(facecolor='white')
 axescolor  = '#f6f6f6'  # the axes background color
 ax1 = fig.add_axes(rect1, axisbg=axescolor)  #left, bottom, width, height
@@ -336,38 +332,22 @@ for ax in ax1, ax2:
 
 plt.savefig('./figures/blr_detection_umass2.pdf')
 
-
-
-
 plt.rc('axes', grid=False)
 plt.rc('grid', color='0.75', linestyle='-', linewidth=0.5)
+#plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
+#plt.gca().xaxis.set_major_locator(mdates.DayLocator())
 textsize = 9
 left, width = 0.1, 0.8
-rect1 = [left, 0.1, width, 0.8]
+rect1 = [left, 0.2, width, 0.9]
 fig = plt.figure(facecolor='white')
 axescolor  = '#f6f6f6'  # the axes background color
 ax1 = fig.add_axes(rect1, axisbg=axescolor)  #left, bottom, width, height
-
-#    #fig, ax = plt.subplots(nrows=1, ncols=1)
 p_array = np.asarray(p_array)
 hist, bin_edges = np.histogram(p_array, density=True)
 numBins = 200
 ax1.hist(p_array, numBins,color=GRAY, alpha=0.7)
 ax1.set_ylabel("P-value distribution")
 plt.savefig('./figures/pvalue_distribution_under_H0.pdf')
-
-
-
-
-
-# red dashes, blue squares and green triangles
-#plt.plot(y_time, y_target, 'r--', y_time, y_predictions, 'b--')
-plt.plot(y_time, y_target_smoothed, 'r--', y_time, y_predictions_smoothed, 'b--')
-#plt.ylim([0,15000])
-plt.show()
-
-
-
 
 cursor.close()
 cnx.close()
