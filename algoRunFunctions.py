@@ -26,7 +26,7 @@ def train(X, y):
     # This function is used for training our Bayesian model
     # Returns the regression parameters w_opt, and alpha, beta, S_N
     # needed for the predictive distribution
-    
+
     Phi = X # the measurement matrix of the input variables x (i.e., features)
     t   = y # the vector of observations for the target variable
     (N, M) = np.shape(Phi)
@@ -35,10 +35,10 @@ def train(X, y):
     beta = 5
     max_iter = 100
     k = 0
-    
+
     PhiT_Phi = np.dot(np.transpose(Phi), Phi)
     s = np.linalg.svd(PhiT_Phi, compute_uv=0) # Just get the vector of singular values s
-    
+
     ab_old = np.array([alpha, beta])
     ab_new = np.zeros((1,2))
     tolerance = 10**-3
@@ -54,7 +54,7 @@ def train(X, y):
             print "                           GOODBYE and see you later. Exiting ..."
             print  "******************************************************************************************************"
             sys.exit(-1)
-        
+
         m_N = beta * np.dot(S_N, np.dot(np.transpose(Phi), t))
         gamma = sum(beta*s[i]**2 /(alpha + beta*s[i]**2) for i in range(M))
         #
@@ -65,11 +65,11 @@ def train(X, y):
         one_over_beta = 1/(N-gamma) * sum( (t[n] - np.inner(m_N, Phi[n]))**2 for n in range(N))
         beta = 1/one_over_beta
         ab_new = np.array([alpha, beta])
-    
+
     S_N = np.linalg.inv(alpha*np.eye(M) + beta*PhiT_Phi)
     m_N = beta * np.dot(S_N, np.dot(np.transpose(Phi), t))
     w_opt = m_N
-    
+
     return (w_opt, alpha, beta, S_N)
 
 
@@ -78,20 +78,20 @@ def train(X, y):
 def severityMetric(error, mu, sigma, w, Sn_1):
     # This function returns the values of the EWMA control chart. It returns the
     # Sn values, as described in the paper.
-    
+
     if error < mu: # left-tailed
         p_value = sp.stats.norm.cdf(error, mu, sigma)
         Zt = sp.stats.norm.ppf(p_value) # inverse of cdf N(0,1)
     else: # right-tailed
         p_value = 1 - sp.stats.norm.cdf(error, mu, sigma)
         Zt = sp.stats.norm.ppf(1-p_value) # inverse of cdf N(0,1)
-    
-    
+
+
     if Zt > 10:
         Zt = 10
     elif Zt < -10:
         Zt = -10
-    
+
     Sn = (1-w)*Sn_1 + w*Zt
 
     if debug:

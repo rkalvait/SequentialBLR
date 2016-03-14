@@ -137,6 +137,10 @@ p_array = []
 count123 = 1 #for debug
 while startTime < endTime:
 
+    #Some of the data seems bad on the 31st - too many NULLS
+    if startTime > dt.datetime(2012, 5, 30) and startTime < dt.datetime(2012, 6, 1):
+        startTime = dt.datetime(2012, 6, 1)
+
     if(rowCount % 250 == 0):
         print "trying time: %s " % startTime
 
@@ -199,17 +203,6 @@ while startTime < endTime:
             #time += Xt[:(rowCount % matrixLength)]
             w_opt, a_opt, b_opt, S_N = train(data, y)
             initTraining = 1
-#            if startTime > dt.datetime.strptime("2012-05-17 06:30:03", "%Y-%m-%d %H:%M:%S") and startTime < dt.datetime.strptime("2012-05-17 10:30:03", "%Y-%m-%d %H:%M:%S"):
-#                text = "test" + str(count123) + ".txt"
-#                np.savetxt(text, data, fmt='%10.5f', delimiter=',')   # X is an array
-#                print startTime
-#                print "W_OPT %s " % w_opt
-#                print "ALPHA %s " % a_opt
-#                print "BETA %s " % b_opt
-#                print count123
-#                count123 = count123 + 1
-#                if b_opt > 1:
-#                    print data
 
         elif(runnable(data) < 0.5):
             notRunnableCount += 1
@@ -222,8 +215,27 @@ while startTime < endTime:
     #make prediction:
     if(initTraining):
         x_n = X[(rowCount-1) % matrixLength][:len(columns)-1]
-        y_time.append(Xt[(rowCount-1) % matrixLength])
-        y_predictions.append(max(0, np.inner(w_opt,x_n)))
+        #y_time.append(Xt[(rowCount-1) % matrixLength])
+        prediction = max(0, np.inner(w_opt,x_n))
+        # if prediction > 25000:
+        #     #retrain with old data
+        #     print "Error, prediction skyrocketed (potentially) due to beta = 0 NAN/INF"
+        #     print "Re-training on random set of old data, for this period"
+        #
+        #     #Create the new training matrix
+        #     tempData = []
+        #     tempActual = []
+        #     for i in range(0, int(0.75*len(X))):
+        #         randomRow = random.randint(0, len(X)-1)
+        #         tempData.append(X[randomRow][0:len(columns)-1])
+        #         tempActual.append(X[randomRow][len(columns)-1])
+        #
+        #     w_opt, a_opt, b_opt, S_N = train(tempData, tempActual)
+        #     prediction = max(0, np.inner(w_opt,x_n))
+        #     if prediction > 25000:
+        #         print "Error persists after a new training."
+
+        y_predictions.append(prediction)
         y_target.append(X[(rowCount-1) % matrixLength][len(columns)-1])
         error = (y_predictions[-1]-y_target[-1])
         sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
@@ -238,10 +250,12 @@ while startTime < endTime:
         p = 1 - sp.stats.norm.cdf(error, mu, sigma)
         p_array.append(p)
 
+
+    y_time.append(Xt[(rowCount-1) % matrixLength])
     #Increment and loop
     startTime += dt.timedelta(0,granularityInSeconds)
     rowCount += 1
-                              
+
 
 print "Analysis complete."
 print "Graphing and statistics..."
@@ -273,7 +287,7 @@ confidence = 1.96 / np.sqrt(T) *  np.std(np.abs(y_target-y_predictions))
 Re_MSE = np.linalg.norm(y_target-y_predictions)**2 / np.linalg.norm(y_target)**2
 # Standardise Mean Squared Error
 SMSE =  np.linalg.norm(y_target-y_predictions)**2 / T / np.var(y_target)
-    
+
 rmse_smoothed.append(np.sqrt(PMSE_score_smoothed))
 rmse.append(np.sqrt(PMSE_score))
 co95.append(confidence)
@@ -345,12 +359,10 @@ ax1 = fig.add_axes(rect1, axisbg=axescolor)  #left, bottom, width, height
 p_array = np.asarray(p_array)
 hist, bin_edges = np.histogram(p_array, density=True)
 numBins = 200
+p_array = p_array[~np.isnan(p_array)]
 ax1.hist(p_array, numBins,color=GRAY, alpha=0.7)
 ax1.set_ylabel("P-value distribution")
 plt.savefig('./figures/pvalue_distribution_under_H0.pdf')
 
 cursor.close()
 cnx.close()
-
-
-
