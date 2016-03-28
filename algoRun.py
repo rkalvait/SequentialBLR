@@ -295,7 +295,7 @@ Re_mse.append(Re_MSE)
 smse.append(SMSE)
 
 
-print "Count no data:"
+print "No data counts:"
 print countNoData
 
 print "PMSE for smoothed: %d" % (PMSE_score_smoothed)

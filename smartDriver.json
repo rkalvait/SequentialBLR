@@ -2,7 +2,7 @@
 	"granularity": "1",
 	"windowSize": "24",
   "forecastingInterval": "1",
-  "idSelection": "1-25",
+  "idSelection": "1-25,27-30",
   "totalConsum": "circuitGrid",
   "specifyTime": "0",
   "beginTime" : "2012-05-25 01:00:00",
