@@ -7,6 +7,9 @@ from algoRunFunctions import movingAverage
 from algoRunFunctions import train
 from algoRunFunctions import runnable
 from algoRunFunctions import severityMetric
+from sklearn.metrics import recall_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import f1_score
 from datetime import date
 import random
 import scipy as sp
@@ -303,9 +306,7 @@ print "PMSE for nonsmoothed: %d" % (PMSE_score)
 print "-------------------------------------------------------------------------------------------------"
 print "%20s |%20s |%25s |%20s" % ("RMSE-score (smoothed)", "RMSE-score (raw)", "Relative MSE", "SMSE")
 print "%20.2f  |%20.2f |%25.2f |%20.2f " % (np.mean(np.asarray(rmse_smoothed)), np.mean(np.asarray(rmse)), np.mean(np.asarray(Re_mse)), np.mean(np.asarray(smse)))
-
 print "-------------------------------------------------------------------------------------------------"
-
 
 OBSERVS_PER_HR = 60 / int(jsonDataFile["granularity"])
 axescolor  = '#f6f6f6'  # the axes background color
