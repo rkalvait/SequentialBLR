@@ -1,0 +1,140 @@
+{
+	"generate": "data",
+		"delay": "1000",
+		"datadirectory": "//home//user//SensorData//TestData//",
+		"time":
+		{
+			"refreshurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[7].instances[0].commandClasses[49].Get(sensorType = -1)",
+			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[2].instances[0].commandClasses[49].data[1].val.updateTime"
+		},
+		"sensors": [
+		{
+			"graphnumber": "1",
+			"legend": "Fib Motion",
+			"linecolor": "#000099",
+			"refreshurl": " http://your.ip.goes.here:port/ZWaveAPI/Run/devices[10].instances[0].commandClasses[48].Get(sensorType = -1)",
+			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[10].instances[0].commandClasses[48].data[1].level.value",
+			"interpret": "bool",
+			"graphto": "50"
+		},
+
+		{
+			"graphnumber": "1",
+			"legend": "Fib Temperature",
+			"linecolor": "#000098",
+			"refreshurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[10].instances[0].commandClasses[49].Get(sensorType = -1)",
+			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[10].instances[0].commandClasses[49].data[1].val.value",
+			"interpret": "double",
+			"graphto": "800"
+		},
+
+		{
+			"graphnumber": "0",
+			"legend": "Fib Lum",
+			"linecolor": "#000097",
+			"refreshurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[10].instances[0].commandClasses[49].Get(sensorType = -1)",
+			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[10].instances[0].commandClasses[49].data[3].val.value",
+			"interpret": "double",
+			"graphto": "800" 
+		},
+
+		{
+			"graphnumber": "2",
+			"legend": "Door/Window Sensor",
+			"linecolor": "#000096",
+			"refreshurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[7].instances[0].commandClasses[48].Get(sensorType = -1)",
+			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[7].instances[0].commandClasses[48].data[1].level.value",
+			"interpret": "double",
+			"graphto": "800"
+		},
+
+		{
+			"graphnumber": "2",
+			"legend": "Fortrezz Water Sensor",
+			"linecolor": "#000095",
+			"refreshurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[9].instances[0].commandClasses[113].Get(sensorType = -1)",
+			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[9].instances[0].commandClasses[113].data[5].evenString.value",
+			"interpret": "double",
+			"graphto": "800"
+		},
+
+		{
+			"graphnumber": "2",
+			"legend": "Everspring Water Sensor",
+			"linecolor": "#000094",
+			"refreshurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[8].instances[0].commandClasses[156].Get(type = -1)",
+			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[8].instances[0].commandClasses[156].data[5].sensorState.value",
+			"interpret": "bool",
+			"graphto": "50"
+		},
+
+		{
+			"graphnumber": "3",
+			"legend": "Power Watts",
+			"linecolor": "#000093",
+			"refreshurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[3].instances[0].commandClasses[49].Get(sensorType = -1)",
+			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[3].instances[0].commandClasses[49].data[4].val.value",
+			"interpret": "double",
+			"graphto": "100"
+		},
+
+
+		{
+			"graphnumber":"3",
+			"legend": "Electric Power",
+			"linecolor": "#000041",
+			"refreshurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[3].instances[0].commandClasses[50].Get(sensorType = -1)",
+			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[3].instances[0].commandClasses[50].data[0].val.value",
+			"interpret": "double",
+			"graphto": "100"
+
+		},
+
+		{
+			"graphnumber":"2",
+			"legend": "Aeon Motion",
+			"linecolor": "#000039",
+			"refreshurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[2].instances[0].commandClasses[48].Get(sensorType = -1)",
+			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[2].instances[0].commandClasses[48].data[1].level.value",
+			"interpret": "bool",
+			"graphto": "50"
+
+		},
+
+		{
+			"graphnumber":"1",
+			"legend": "Aeon Temp",
+			"linecolor": "#000038",
+			"refreshurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[2].instances[0].commandClasses[49].Get(sensorType = -1)",
+			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[2].instances[0].commandClasses[49].data[1].val.value",
+			"interpret": "bool",
+			"graphto": "50"
+
+		},
+
+		{
+			"graphnumber":"0",
+			"legend": "Aeon Lum",
+			"linecolor": "#000037",
+			"refreshurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[2].instances[0].commandClasses[49].Get(sensorType = -1)",
+			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[2].instances[0].commandClasses[49].data[3].val.value",
+			"interpret": "double",
+			"graphto": "15000"
+
+		},
+
+		{
+			"graphnumber":"1",
+			"legend": "Aeon Hum",
+			"linecolor": "#000037",
+			"refreshurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[2].instances[0].commandClasses[49].Get(sensorType = -1)",
+			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[2].instances[0].commandClasses[49].data[5].val.value",
+			"interpret": "double",
+			"graphto": "100"
+
+		}
+
+	]
+}
+
+
