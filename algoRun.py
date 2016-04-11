@@ -20,6 +20,20 @@ import matplotlib.dates as mdates
 
 print "Starting algorithm run..."
 
+y_predictions = []
+y_target = []
+y_time = []
+w_opt = []
+a_opt = 0
+b_opt = 0
+rowCount = 1
+initTraining = 0
+notRunnableCount = 0
+mu = 0; sigma = 1000
+w, L = (.84, 3.719) # EWMA parameters. Other pairs can also be used, see paper
+Sn_1 = 0
+p_array = []
+
 with open('config.txt') as f:
     for line in f:
         if line.startswith('HOST'):
@@ -123,21 +137,6 @@ y = [None]*matrixLength
 
 print "Beginning analysis."
 
-y_predictions = []
-y_target = []
-y_time = []
-w_opt = []
-a_opt = 0
-b_opt = 0
-rowCount = 1
-initTraining = 0
-notRunnableCount = 0
-mu = 0; sigma = 1000
-w, L = (.84, 3.719) # EWMA parameters. Other pairs can also be used, see paper
-Sn_1 = 0
-p_array = []
-
-count123 = 1 #for debug
 while startTime < endTime:
 
     #Some of the data seems bad on the 31st - too many NULLS
@@ -220,23 +219,6 @@ while startTime < endTime:
         x_n = X[(rowCount-1) % matrixLength][:len(columns)-1]
         #y_time.append(Xt[(rowCount-1) % matrixLength])
         prediction = max(0, np.inner(w_opt,x_n))
-        # if prediction > 25000:
-        #     #retrain with old data
-        #     print "Error, prediction skyrocketed (potentially) due to beta = 0 NAN/INF"
-        #     print "Re-training on random set of old data, for this period"
-        #
-        #     #Create the new training matrix
-        #     tempData = []
-        #     tempActual = []
-        #     for i in range(0, int(0.75*len(X))):
-        #         randomRow = random.randint(0, len(X)-1)
-        #         tempData.append(X[randomRow][0:len(columns)-1])
-        #         tempActual.append(X[randomRow][len(columns)-1])
-        #
-        #     w_opt, a_opt, b_opt, S_N = train(tempData, tempActual)
-        #     prediction = max(0, np.inner(w_opt,x_n))
-        #     if prediction > 25000:
-        #         print "Error persists after a new training."
 
         y_predictions.append(prediction)
         y_target.append(X[(rowCount-1) % matrixLength][len(columns)-1])
