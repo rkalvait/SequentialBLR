@@ -24,7 +24,7 @@ if len(sys.argv) != 4:
     print "Where forecasting interval is the number of hours between trainings"
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
+log.basicConfig(filename='sequential_datadump.log',level=logging.INFO)
 #mac:
 handler = logging.handlers.SysLogHandler(address = '/var/run/syslog')
 #handler = logging.handlers.SysLogHandler(address = '/dev/log')
