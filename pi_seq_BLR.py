@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import logging
 import logging.handlers
+from get_data import get_data
 
 print "Starting algorithm run..."
 if len(sys.argv) != 4:
@@ -64,7 +65,7 @@ row_count = 0
 while True:
 
     #get new data from pi
-    new_data = THIS_FUNCTION() #TODO, max's function
+    new_data = get_data()
 
     #get current energy reading
     X[(row_count) % martix_length][num_sensors] = 1313 #TODO, we currently don't have this data
