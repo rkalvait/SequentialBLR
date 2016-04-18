@@ -2,3 +2,4 @@ config.txt
 *.pyc
 figures/*
 algoRun
+sensors.json
