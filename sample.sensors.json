@@ -17,8 +17,8 @@
 			},
 			"tables" : [
 				{
-					"table_name" : "XXX"
-					"data_column" : "Could maybe be a list"
+					"table_name" : "XXX",
+					"data_column" : "Could maybe be a list",
 					"time_column" : "XXX"
 				}
 			]
