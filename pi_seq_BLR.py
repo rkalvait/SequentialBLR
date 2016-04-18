@@ -1,22 +1,21 @@
 #!/usr/bin/python
 #if you have any questions, email/text me - Davis
-import mysql.connector
-from urllib import urlopen
-import json
-import numpy as np
 import datetime as dt
-from algoRunFunctions import train, severityMetric
-from datetime import date
+import json
+import logging
+import mysql.connector
+import numpy as np
+import os 
 import random
 import scipy as sp
 import scipy.stats
 import sys
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-import logging
-import logging.handlers
+import time
+
+from algoRunFunctions import train, severityMetric
+from datetime import date
 from get_data import get_data
-import os 
+from urllib import urlopen
 
 print "Starting algorithm run..."
 if len(sys.argv) != 4:
@@ -26,18 +25,9 @@ if len(sys.argv) != 4:
     print "Where forecasting interval is the number of hours between trainings"
     exit(1)
 
-log = logging.getLogger(__name__)
-logging.basicConfig(filename='sequential_datadump.log',level=logging.INFO)
-#mac:
-#handler = logging.handlers.SysLogHandler(address = '/var/run/syslog')
-#handler = logging.handlers.SysLogHandler(address = '/dev/log')
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-formatter = logging.Formatter('%(module)s: %(message)s')
-ch.setFormatter(formatter)
-log.addHandler(ch)
-#handler.setFormatter(formatter)
-#log.addHandler(handler)
+FORMAT='%(asctime)s - %(levelname)s - %(message)s'
+DATE_FORMAT='%m/%d/%Y %I:%M:%S %p'
+logging.basicConfig(filename='/var/log/sequential_predictions.log', level=logging.DEBUG, format=FORMAT, datefmt=DATE_FORMAT)
 
 # Training statistics:
 w_opt = []
@@ -55,6 +45,18 @@ with open("/usr/local/sbin/SequentialBLR/sensors.json") as data_file:
     json_sensor_data = json.load(data_file)
 print "Found JSON file."
 
+config = {
+    'user': json_sensor_data["database"]["credentials"]["username"],
+    'password': json_sensor_data["database"]["credentials"]["password"],
+    'host': json_sensor_data["database"]["credentials"]["host"],
+    'database': json_sensor_data["database"]["credentials"]["database_name"],
+    'raise_on_warnings': True
+}
+cnx = mysql.connector.connect(**config)
+cursor = cnx.cursor()
+qry = "SELECT " json_sensor_data["database"]["tables"]["data_column"] + " FROM " + json_sensor_data["database"]["tables"]["table_name"]
+qry = qry + " ORDER BY " + json_sensor_data["database"]["tables"]["time_column"] + "DESC LIMIT 1"
+
 num_sensors = len(json_sensor_data["sensors"])
 martix_length = int(sys.argv[2])*60/int(sys.argv[1])
 forecasting_interval = int(sys.argv[3])*60/int(sys.argv[1])
@@ -71,14 +73,18 @@ print "Beginning analysis."
 
 row_count = 0
 while True:
-
+	
     if not row_count % 200:
 	print row_count
+	
     #get new data from pi
     new_data = get_data()
 
+    #Execute the query to get new y value
+    cursor.execute(qry)
+
     #get current energy reading
-    X[(row_count) % martix_length][num_sensors] = 1313 #TODO, we currently don't have this data
+    X[(row_count) % martix_length][num_sensors] = cursor[0][0] #I think this is right syntax?
     #Update X - new_data[0] contains a timestamp we don't need
     for i in range(1, num_sensors):
         #We have new valid data! Also update last_data
@@ -107,10 +113,8 @@ while True:
         target = X[(row_count) % martix_length][num_sensors]
 
         #log the new result
-        #logger.info(dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S") + " " + str(target) + " " + str(prediction))
-	print dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S") + " " + str(target) + " " + str(prediction)
-
-	
+        logging.info(dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S") + " " + str(target) + " " + str(prediction))
+	#print dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S") + " " + str(target) + " " + str(prediction)
 
         #not currently used but will be necessary to flag user:
         error = (prediction-target)
@@ -131,9 +135,14 @@ while True:
         elif np.abs(Sn) > THRESHOLD and alert_counter == 1:
             Sn = 0
             alert_counter = 0
-            logger.error("ERROR: ANOMALY FOUND")
-	    print "ERROR: ANOMALY"
+            logging.error("ANOMALY FOUND!")
+	    #print "ERROR: ANOMALY"
 
         Sn_1 = Sn
 
     row_count += 1
+    #A rough sleeping approximation. The delay of the above logic is dependent on the number
+    #of sensors, and whether or not this iteration had to train. You could use a timer,
+    #but that seems like unnecessary extra work. For our purpose, and if the user is using a granularity
+    #of a minute or more, I think this error is negligible.
+    time.sleep(granularity_in_seconds - 2)
