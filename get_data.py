@@ -10,7 +10,7 @@ import time
 from urllib import urlopen as openurl
 import urllib2
 
-st.check_settings()
+#st.check_settings()
 st.init()
 
 def get_data():

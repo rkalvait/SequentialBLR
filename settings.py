@@ -10,7 +10,7 @@ import binascii
 
 '''get JSON PATH from the config file'''
 JSON_PATH = ''
-with open('/usr/local/sbin/Sensor-Polling/config.txt') as f:
+with open('/usr/local/sbin/SequentialBLR/config.txt') as f:
     for line in f:
         if line.startswith('JSON_PATH'):
             loc = line.find('=')

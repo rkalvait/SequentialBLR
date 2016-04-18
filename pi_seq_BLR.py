@@ -1,10 +1,11 @@
+#!/usr/bin/python
 #if you have any questions, email/text me - Davis
 import mysql.connector
 from urllib import urlopen
 import json
 import numpy as np
 import datetime as dt
-from algoRunFunctions import train
+from algoRunFunctions import train, severityMetric
 from datetime import date
 import random
 import scipy as sp
@@ -15,6 +16,7 @@ import matplotlib.dates as mdates
 import logging
 import logging.handlers
 from get_data import get_data
+import os 
 
 print "Starting algorithm run..."
 if len(sys.argv) != 4:
@@ -22,15 +24,20 @@ if len(sys.argv) != 4:
     print "Where granularity is the frequency of data collection, in minutes"
     print "Where window size is the number of hours of remembered data"
     print "Where forecasting interval is the number of hours between trainings"
+    exit(1)
 
 log = logging.getLogger(__name__)
-log.basicConfig(filename='sequential_datadump.log',level=logging.INFO)
+logging.basicConfig(filename='sequential_datadump.log',level=logging.INFO)
 #mac:
-handler = logging.handlers.SysLogHandler(address = '/var/run/syslog')
+#handler = logging.handlers.SysLogHandler(address = '/var/run/syslog')
 #handler = logging.handlers.SysLogHandler(address = '/dev/log')
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
 formatter = logging.Formatter('%(module)s: %(message)s')
-handler.setFormatter(formatter)
-log.addHandler(handler)
+ch.setFormatter(formatter)
+log.addHandler(ch)
+#handler.setFormatter(formatter)
+#log.addHandler(handler)
 
 # Training statistics:
 w_opt = []
@@ -43,7 +50,8 @@ Sn_1 = 0
 init_training = 0
 alert_counter = 0
 
-with open('./sensors.json') as data_file:
+
+with open("/usr/local/sbin/SequentialBLR/sensors.json") as data_file:
     json_sensor_data = json.load(data_file)
 print "Found JSON file."
 
@@ -64,6 +72,8 @@ print "Beginning analysis."
 row_count = 0
 while True:
 
+    if not row_count % 200:
+	print row_count
     #get new data from pi
     new_data = get_data()
 
@@ -94,10 +104,13 @@ while True:
     if(init_training):
         x_n = X[(row_count) % martix_length][:num_sensors]
         prediction = max(0, np.inner(w_opt,x_n))
-        target - X[(row_count) % martix_length][num_sensors]
+        target = X[(row_count) % martix_length][num_sensors]
 
         #log the new result
-        log.info(dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S") + " " + str(target) + " " + str(prediction))
+        #logger.info(dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S") + " " + str(target) + " " + str(prediction))
+	print dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S") + " " + str(target) + " " + str(prediction)
+
+	
 
         #not currently used but will be necessary to flag user:
         error = (prediction-target)
@@ -118,7 +131,8 @@ while True:
         elif np.abs(Sn) > THRESHOLD and alert_counter == 1:
             Sn = 0
             alert_counter = 0
-            print "ERROR: ANOMALY FOUND"
+            logger.error("ERROR: ANOMALY FOUND")
+	    print "ERROR: ANOMALY"
 
         Sn_1 = Sn
 
