@@ -7,6 +7,22 @@
 			"refreshurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[7].instances[0].commandClasses[49].Get(sensorType = -1)",
 			"dataurl": "http://your.ip.goes.here:port/ZWaveAPI/Run/devices[2].instances[0].commandClasses[49].data[1].val.updateTime"
 		},
+		"database": {
+			"credentials" : {
+				"database_name" : "XXX",
+				"username" : "XXX",
+				"password" : "XXX",
+				"host" : "XXX",
+				"port" : "XXX"
+			},
+			"tables" : [
+				{
+					"table_name" : "XXX"
+					"data_column" : "Could maybe be a list"
+					"time_column" : "XXX"
+				}
+			]
+		},
 		"sensors": [
 		{
 			"graphnumber": "1",
