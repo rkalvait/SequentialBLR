@@ -1,9 +1,11 @@
 #!/usr/bin/python
+# vim:ts=4:sw=4:sts=4:tw=100
+# -*- coding: utf-8 -*-
+#
 #if you have any questions, email/text me - Davis
 import datetime as dt
 import json
 import logging
-import mysql.connector
 import numpy as np
 import os 
 import random
@@ -14,7 +16,7 @@ import time
 
 from algoRunFunctions import train, severityMetric
 from datetime import date
-from get_data import get_data
+from get_data import get_data, get_power
 from urllib import urlopen
 
 print "Starting algorithm run..."
@@ -22,12 +24,16 @@ if len(sys.argv) != 4:
     print "Error: please run like: python pi_seq_BLR.py <granularity> <window size> <forecasting interval>"
     print "Where granularity is the frequency of data collection, in minutes"
     print "Where window size is the number of hours of remembered data"
-    print "Where forecasting interval is the number of hours between trainings"
+    print """"Where forecasting interval is the number of hours between 
+			trainings"""
     exit(1)
 
 FORMAT='%(asctime)s - %(levelname)s - %(message)s'
 DATE_FORMAT='%m/%d/%Y %I:%M:%S %p'
-logging.basicConfig(filename='/var/log/sequential_predictions.log', level=logging.DEBUG, format=FORMAT, datefmt=DATE_FORMAT)
+logging.basicConfig(filename='/var/log/sequential_predictions.log', 
+					level=logging.DEBUG, 
+					format=FORMAT,
+					datefmt=DATE_FORMAT)
 
 # Training statistics:
 w_opt = []
@@ -43,19 +49,6 @@ alert_counter = 0
 
 with open("/usr/local/sbin/SequentialBLR/sensors.json") as data_file:
     json_sensor_data = json.load(data_file)
-print "Found JSON file."
-
-config = {
-    'user': json_sensor_data["database"]["credentials"]["username"],
-    'password': json_sensor_data["database"]["credentials"]["password"],
-    'host': json_sensor_data["database"]["credentials"]["host"],
-    'database': json_sensor_data["database"]["credentials"]["database_name"],
-    'raise_on_warnings': True
-}
-cnx = mysql.connector.connect(**config)
-cursor = cnx.cursor()
-qry = "SELECT " json_sensor_data["database"]["tables"]["data_column"] + " FROM " + json_sensor_data["database"]["tables"]["table_name"]
-qry = qry + " ORDER BY " + json_sensor_data["database"]["tables"]["time_column"] + "DESC LIMIT 1"
 
 num_sensors = len(json_sensor_data["sensors"])
 martix_length = int(sys.argv[2])*60/int(sys.argv[1])
@@ -69,7 +62,6 @@ y = [None]*martix_length
 #(sensors that are off report the same data, etc) TODO
 last_data = [0]*num_sensors #Last data
 last_data_count = [0]*num_sensors #number of polls since change of data
-print "Beginning analysis."
 
 row_count = 0
 while True:
@@ -84,7 +76,7 @@ while True:
     cursor.execute(qry)
 
     #get current energy reading
-    X[(row_count) % martix_length][num_sensors] = cursor[0][0] #I think this is right syntax?
+    X[(row_count) % martix_length][num_sensors] = get_power()
     #Update X - new_data[0] contains a timestamp we don't need
     for i in range(1, num_sensors):
         #We have new valid data! Also update last_data

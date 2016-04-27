@@ -9,6 +9,7 @@ import settings as st
 import time
 from urllib import urlopen as openurl
 import urllib2
+import pymssql
 
 #st.check_settings()
 st.init()
@@ -37,3 +38,25 @@ def get_data():
 				else: data_list[i+1] = 0
 
 	return data_list
+
+def get_power():
+	user = json_sensor_data["database"]["credentials"]["username"],
+	password = json_sensor_data["database"]["credentials"]["password"],
+	host = json_sensor_data["database"]["credentials"]["host"],
+	database = json_sensor_data["database"]["credentials"]["database_name"]
+	cnx = pymssql.connect(server, user, password, database)
+
+	cursor = cnx.cursor()
+	qry = "SELECT TOP 1" 
+		  + json_sensor_data["database"]["tables"]["data_column"] 
+		  + " FROM " 
+		  + json_sensor_data["database"]["tables"]["table_name"]
+		  + " ORDER BY "	
+		  + json_sensor_data["database"]["tables"]["time_column"] 
+		  + "DESC LIMIT 1"
+
+	cursor.execute(qry)
+	cnx.commit()
+	data = cursor[0][0] # cursor syntax could be wrong
+	cnx.close()
+	return data
