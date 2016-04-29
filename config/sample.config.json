@@ -1,0 +1,21 @@
+{
+    "database": {
+        "credentials": {
+            "database_name": "XXX",
+            "username": "XXX",
+            "password": "XXX",
+            "host": "XXX",
+            "port": "XXX"
+        },
+        "table":{
+            "name": "XXX",
+            "data_columns" : ["XXX", "YYY"],
+            "time_column" : "XXX"
+        }
+    },
+    "z_way_server": {
+       "host": "XXX",
+       "port": "XXX"
+    }
+}
+

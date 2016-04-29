@@ -1,0 +1,16 @@
+{
+	"<device_id>": 
+	{
+		"name": "<device_name> (i.e. Fibaro Multisensor)",
+		"data": 
+		{
+			"<sensor_name> (i.e. Temperature)": {
+				"data_num": "<numeric_data_index>",
+				"instance_num": "<instance_number>",
+				"command_class": "<command_class_id>",
+				"url_suffix": "<end_of_url>",
+				"type": "<data_type> (options are: bool, double)"
+			}
+		}
+	}
+}
