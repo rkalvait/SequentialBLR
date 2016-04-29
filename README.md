@@ -13,6 +13,9 @@ be configured properly:
 Samples and examples of these configuration files can be found in the 
 config directory.
 
+#####IMPORTANT
+The device\_name of each device in sensors.json must be _unique_
+
 ###Execution
 Once the configuration files have been setup, the program can be run 
 with verbosity using the following commands:
