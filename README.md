@@ -3,15 +3,20 @@
 This repository hosts files for running the sequential BLR algorithm on 
 the raspberry pi. 
 
-##Configuration and Execution
+###Configuration 
 In order to run succesfully, the following files must
 be configured properly:
 
 * config/config.json
 * config/sensors.json
 
+Samples and examples of these configuration files can be found in the 
+config directory.
+
+###Execution
 Once the configuration files have been setup, the program can be run 
 with verbosity using the following commands:
+
 `python pi_seq_BLR.py`
 
 or 
@@ -23,15 +28,15 @@ _note the -O here means NO DEBUG_
 
 The program can be run in silent mode (only logging) using the following
 command:
+
 `python -O pi_seq_BLR.py` 
 
 or 
 
 `./pi_seq_BLR.py`
 
-Samples and examples of these configuration files can be found in the 
-config directory.
 
+###TODO
 Things that still need to be done in this repository:
 
 - [ ] add try, catch error handling when getting data from ZServer or 
