@@ -76,6 +76,7 @@ class ZWave(object):
             raise socket.timeout("Connection to the server timed out")
 
     def _get_data_urls(self, device_id):
+        #print "_get_data_urls device_id:", device_id
         urlbase = ("http://"
                    + self._server_ip + ":"
                    + self._server_port
@@ -148,7 +149,7 @@ class ZWave(object):
         """Returns a list of the device names"""
         device_list = []
         for devive_num, entry in self._devices.iteritems():
-            device_list += entry["name"]
+            device_list.append(entry["name"])
         return device_list
 
     def list_device_ids(self):
@@ -157,5 +158,5 @@ class ZWave(object):
         """
         device_ids = []
         for device_num in self._devices.iteritems():
-            device_ids += device_num
+            device_ids.append(device_num)
         return device_ids
