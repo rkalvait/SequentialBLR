@@ -82,6 +82,7 @@ if __name__ == "__main__":
         #Update X - new_data[0] contains a timestamp we don't need
         for i in range(1, num_sensors):
             #We have new valid data! Also update last_data
+            print "new_data[i],New_data Length, i, num_sensor",new_data[i], len(new_data), i, num_sensors
             X[(row_count) % martix_length][i-1] = new_data[i]
             if new_data[i] == last_data[i-1]:
                 last_data_count[i-1] += 1
@@ -148,4 +149,6 @@ if __name__ == "__main__":
         #of sensors, and whether or not this iteration had to train. You could use a timer,
         #but that seems like unnecessary extra work. For our purpose, and if the user is using a granularity
         #of a minute or more, I think this error is negligible.
+        if __debug__:
+            print (dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")) 
         time.sleep(granularity_in_seconds - 2)
