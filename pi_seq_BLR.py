@@ -76,6 +76,7 @@ ZServer = ZWave(config_dict["z_way_server"]["host"],
 logged_Xdata = np.zeros([1, 1])
 try:
     logged_Xdata = pickle.load(open(XLOG_FILENAME, "r"))
+    print "Training backup file found..."
 except IOError:
     print "***WARNING: No training backup found.***"
 
