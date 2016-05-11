@@ -60,7 +60,6 @@ class ZWave(object):
             for data_name in info["data"]:
                 key = key_base + data_name
                 keys_list.append(key)
-        print 'zwave_get_data_keys: ', keys_list
         return sorted(keys_list)
 
     def _check_connection(self):

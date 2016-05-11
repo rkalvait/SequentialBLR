@@ -12,7 +12,6 @@ def get_data(z_server):
     """
     data_list = []
     data_list.append(int(time.time()))
-    print "z_server: ", z_server.list_device_ids()
     ## get data from sensors ##
     for (device_id, key) in z_server.list_device_ids():
         data_dict = z_server.get_data(device_id)
@@ -50,15 +49,12 @@ def get_power(config_info):
            + config_info["database"]["table"]["name"] + "]"
            + " ORDER BY [") + (config_info["database"]["table"]["time_column"] + "] DESC")
     
-    print "qry: ", qry
-    print "Get Data: qry cursor ", cursor
     cursor.execute(qry)
     final_power = 0
     for row in cursor:
         # this is where the value are, index the row returned
         # like row[0] for first data column, row[1] for second
         # data column, etc.
-       print"get_data Row", row 
        do_stuff = row[0]
        final_power = row[0]
     # TODO, aggregate the power values in some way
