@@ -113,6 +113,7 @@ X = np.zeros([matrix_length, num_sensors+1]) #sensors, energy reading
 # Uset the previous X matrix to save time, if available 
 # Make sure logged_Xdata is the proper size
 if np.shape(logged_Xdata) == (matrix_length, num_sensors+1):
+    print "sizes: logged, mat, num", np.shape(logged_Xdata), matrix_length, num_sensors+1
     X = logged_Xdata
     init_training = True
 else:
@@ -166,10 +167,12 @@ while True:
 
         w_opt, a_opt, b_opt, S_N = train(data, y)
         init_training = 1
+        pickle.dump(X, open(XLOG_FILENAME, "w"))
 
     #make prediction:
     if init_training:
         x_n = X[(row_count) % matrix_length][:num_sensors]
+        print "sizes of w_opt, x_n",w_opt,x_n
         prediction = max(0, np.inner(w_opt,x_n))
         target = X[(row_count) % matrix_length][num_sensors]
 
@@ -215,7 +218,6 @@ while True:
     #but that seems like unnecessary extra work. For our purpose, and if the user is using a granularity
     #of a minute or more, I think this error is negligible.
 
-    pickle.dump(X, open(XLOG_FILENAME, "w"))
     
     if __debug__:
         print (dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
