@@ -1,9 +1,18 @@
 from urllib import urlopen
 import json
 import numpy as np
+import scipy as sp
+import sys
+import scipy.stats
+
+import os
+
+import tensorflow as tf
+
 import sys
 import scipy as sp
 import scipy.stats
+
 
 debug = 0
 
@@ -22,6 +31,60 @@ def runnable(arrayIn):
 
     return float(countValid)/countAll
 
+def tf_train(X_train, y_train):
+    
+    ##### TENSORFLOW ADDITIONS #####
+    print "tf training"
+
+    # First turn y_train into a [n, 1] matrix
+    y_train = np.reshape(y_train, (len(y_train), 1))
+
+    # Format is (Rows, Columns)
+    #print "Shape of X_train: ", np.shape(X_train)
+    #print "Shape of y_train: ", np.shape(y_train)
+    (X_rows, X_cols) = np.shape(X_train)
+    divisor = min(X_train.max(), y_train.max())
+
+    for (x, y), value in np.ndenumerate(X_train):
+        X_train[x, y] /= divisor
+
+    for (x, y), value in np.ndenumerate(y_train):
+        y_train[x, y] /= divisor
+
+    W = tf.Variable(tf.zeros([X_cols, 1]))      # Weight matrix
+
+    # y = W*x
+    y = tf.matmul(X_train, W)
+
+    # Minimize the mean squared errors
+    loss = tf.reduce_mean(tf.square(y - y_train))
+    train_step = tf.train.GradientDescentOptimizer(0.5).minimize(loss)
+
+    # Initialize variables and session
+    init = tf.initialize_all_variables()
+    sess = tf.Session()
+    sess.run(init)
+
+    # Train the model
+    for iter in xrange(200):
+        #if iter % 20 == 0:
+        #    print sess.run(W)
+        #    raw_input("press enter")
+        sess.run(train_step)
+
+    # Return the model parameters
+    #print 'Final W:'
+    #print sess.run(W)
+    #print 'Final Loss:', sess.run(loss)
+
+    w_opt = np.transpose(sess.run(W))
+
+    return w_opt
+    
+
+
+=======
+>>>>>>> 2d3b2a87eb0ceefcf95ca4dc412da1d09354df8e
 def train(X, y):
     # This function is used for training our Bayesian model
     # Returns the regression parameters w_opt, and alpha, beta, S_N

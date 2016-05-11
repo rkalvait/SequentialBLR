@@ -4,6 +4,7 @@ import json
 import numpy as np
 import datetime as dt
 from algoRunFunctions import movingAverage
+from algoRunFunctions import tf_train
 from algoRunFunctions import train
 from algoRunFunctions import runnable
 from algoRunFunctions import severityMetric
@@ -56,11 +57,12 @@ config = {
     'database': db,
     'raise_on_warnings': True
 }
+
+print "Connecting to connect to DB"
 cnx = mysql.connector.connect(**config)
 cursor = cnx.cursor()
-print "Connection made to DB."
 
-with open('/Users/dvorva/Documents/Research/getGraphiteData/sequentialBLR/smartDriver.json') as data_file:
+with open('smartDriver.json') as data_file:
     jsonDataFile = json.load(data_file)
 print "Found JSON file."
 
@@ -161,7 +163,8 @@ while startTime < endTime:
     #Execute the query:
     cursor.execute(qry , (startTime, startTime + dt.timedelta(0,granularityInSeconds)))
 
-    #Get the average in the queried window: (should probably switch this to be done by qry)
+    #Get the average in the queried window:
+    #TODO: should probably switch this to be done by qry
     colSum = np.zeros(len(columns))
     colCount = np.zeros(len(columns))
     for row in cursor:
@@ -203,10 +206,18 @@ while startTime < endTime:
             #'Unwrap' the data matrices
             #time = Xt[(rowCount % matrixLength):]
             #time += Xt[:(rowCount % matrixLength)]
+
+            # For tf_train
+            #w_opt = tf_train(data, y)
+            #a_opt = 1
+            #b_opt = 1
+            #S_N = 1
+
+            # For BLR train
             w_opt, a_opt, b_opt, S_N = train(data, y)
             initTraining = 1
 
-        elif(runnable(data) < 0.5):
+        else:
             notRunnableCount += 1
             if(notRunnableCount > 5):
                 print "Data not runnable too many times! Exiting..."
@@ -224,7 +235,10 @@ while startTime < endTime:
         y_target.append(X[(rowCount-1) % matrixLength][len(columns)-1])
         error = (y_predictions[-1]-y_target[-1])
         sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
-        if sigma < 1: sigma = 1 # Catching pathogenic cases where variance (ie, sigma) gets really really small
+
+        # Catching pathogenic cases where variance (ie, sigma) gets too small
+        if sigma < 1:
+            sigma = 1
 
         # Update severity metric
         mu = mu; sigma = sigma
@@ -342,8 +356,8 @@ ax1 = fig.add_axes(rect1, axisbg=axescolor)  #left, bottom, width, height
 p_array = np.asarray(p_array)
 hist, bin_edges = np.histogram(p_array, density=True)
 numBins = 200
-p_array = p_array[~np.isnan(p_array)]
-ax1.hist(p_array, numBins,color=GRAY, alpha=0.7)
+#p_array = p_array[~np.isnan(p_array)]
+#ax1.hist(p_array, numBins,color=GRAY, alpha=0.7)
 ax1.set_ylabel("P-value distribution")
 plt.savefig('./figures/pvalue_distribution_under_H0.pdf')
 
