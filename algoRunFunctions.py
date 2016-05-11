@@ -31,7 +31,7 @@ def runnable(arrayIn):
 
     return float(countValid)/countAll
 
-"""
+
 def tf_train(X_train, y_train):
     
     ##### TENSORFLOW ADDITIONS #####
@@ -78,7 +78,6 @@ def tf_train(X_train, y_train):
 
     return w_opt
     
-"""
 
 def train(X, y):
     # This function is used for training our Bayesian model
