@@ -83,8 +83,6 @@ def tf_train(X_train, y_train):
     
 
 
-=======
->>>>>>> 2d3b2a87eb0ceefcf95ca4dc412da1d09354df8e
 def train(X, y):
     # This function is used for training our Bayesian model
     # Returns the regression parameters w_opt, and alpha, beta, S_N
