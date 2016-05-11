@@ -35,14 +35,12 @@ def runnable(arrayIn):
 def tf_train(X_train, y_train):
     
     ##### TENSORFLOW ADDITIONS #####
-    print "tf training"
 
     # First turn y_train into a [n, 1] matrix
     y_train = np.reshape(y_train, (len(y_train), 1))
 
-    # Format is (Rows, Columns)
-    #print "Shape of X_train: ", np.shape(X_train)
-    #print "Shape of y_train: ", np.shape(y_train)
+    # If data values are too large, tensorflow will be inaccurate
+    # Divide both X and y by the same value so that W is not affected
     (X_rows, X_cols) = np.shape(X_train)
     divisor = min(X_train.max(), y_train.max())
 
@@ -67,16 +65,14 @@ def tf_train(X_train, y_train):
     sess.run(init)
 
     # Train the model
-    for iter in xrange(200):
+    for iter in xrange(500):
         #if iter % 20 == 0:
         #    print sess.run(W)
         #    raw_input("press enter")
         sess.run(train_step)
 
     # Return the model parameters
-    #print 'Final W:'
-    #print sess.run(W)
-    #print 'Final Loss:', sess.run(loss)
+    print 'Training Loss:', sess.run(loss)
 
     w_opt = np.transpose(sess.run(W))
 
@@ -95,7 +91,7 @@ def train(X, y):
     # Init values for  hyper-parameters alpha, beta
     alpha = 5*10**(-3)
     beta = 5
-    max_iter = 100
+    max_iter = 500
     k = 0
 
     PhiT_Phi = np.dot(np.transpose(Phi), Phi)

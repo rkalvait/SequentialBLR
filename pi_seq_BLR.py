@@ -1,154 +1,221 @@
 #!/usr/bin/python -O
-#
-#if you have any questions, email/text me - Davis
+
+#############################################
+########## NextEnergy BLR Analysis ##########
+#############################################
+
+# Filename:     pi_seq_BLR.py
+# Author(s):    dvorva, apadin, yabskbd
+# Start Date:   5/9/2016
+version_number = 1.0
+
+print "\n\n##### NextEnergy Electricity Usage Analysis #####"
+print "Version: ", version_number, "\n"
+
+if __debug__:
+    print "Running in debug mode...\n"
+else:
+    print "Starting program...\n"
+
+# Checking command-line input
+import sys
+if len(sys.argv) != 4:
+    print """Error: usage: python""", sys.argv[0], """ <granularity>
+            <window size> <forecasting interval>"""
+    print "Where granularity is the frequency of data collection, in minutes"
+    print "Where window size is the amount of remembered data, in hours"
+    print "Where forecasting interval is the time between trainings, in hours"
+    exit(1)
+
+
+############################################################
+
+print "Initializing libraries..."
 
 import datetime as dt
 import json
 import logging
 import time
-import sys
 import numpy as np
-
+import pickle
 from algoRunFunctions import train, severityMetric
 from get_data import get_data, get_power
 from zwave_api import ZWave
 
-if __name__ == "__main__":
-    if __debug__:
-        print "Starting algorithm run..."
-    if len(sys.argv) != 4:
-        print """Error: please run like: python pi_seq_BLR.py <granularity>
-                <window size> <forecasting interval>"""
-        print "Where granularity is the frequency of data collection, in minutes"
-        print "Where window size is the number of hours of remembered data"
-        print """"Where forecasting interval is the number of hours between
-                trainings"""
-        exit(1)
 
-    FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-    DATE_FORMAT = '%m/%d/%Y %I:%M:%S %p'
-    logging.basicConfig(filename='/var/log/sequential_predictions.log',
-                        level=logging.DEBUG,
-                        format=FORMAT,
-                        datefmt=DATE_FORMAT)
+############################################################
 
-    # Training statistics:
-    w_opt = []
-    a_opt = 0
-    b_opt = 0
-    mu = 0
-    sigma = 1000
-    THRESHOLD = 100000 #TODO, set this
-    w, L = (.84, 3.719) # EWMA parameters. Other pairs can also be used, see paper
-    Sn_1 = 0
-    init_training = 0
-    alert_counter = 0
+#if __name__ == "__main__":
 
-    ## Set up zwave_api here using config file ##
-    with open("./config/config.json") as config_fh:
-        config_dict = json.load(config_fh)
-    with open("./config/sensors.json") as device_fh:
-        device_dict = json.load(device_fh)
-    ZServer = ZWave(config_dict["z_way_server"]["host"],
-                    config_dict["z_way_server"]["port"],
-                    device_dict)
+print "Loading configuration settings..."
 
-    num_sensors = len(ZServer.get_data_keys())
-    martix_length = int(sys.argv[2])*60/int(sys.argv[1])
-    forecasting_interval = int(sys.argv[3])*60/int(sys.argv[1])
-    granularity_in_seconds = int(sys.argv[1])*60
+##### PARAMETERS #####
+XLOG_FILENAME = "X_data.bak"
+SECS_PER_MIN = 60
+MINS_PER_HOUR = 60
+HOURS_PER_DAT = 24
 
-    #X window init.
-    X = np.zeros([martix_length, num_sensors+1]) #sensors, energy reading
-    y = [None]*martix_length
-    #Not currently used, but eventually we should add the logic to not use old data
-    #(sensors that are off report the same data, etc) TODO
-    last_data = [0]*num_sensors #Last data
-    last_data_count = [0]*num_sensors #number of polls since change of data
+# Logging script activity
+FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
+DATE_FORMAT = '%m/%d/%Y %I:%M:%S %p'
+logging.basicConfig(filename='/var/log/sequential_predictions.log',
+                    level=logging.DEBUG,
+                    format=FORMAT,
+                    datefmt=DATE_FORMAT)
 
-    row_count = 0
+# Set up ZWave server here using zwave_api and config file
+with open("./config/config.json") as config_fh:
+    config_dict = json.load(config_fh)
+with open("./config/sensors.json") as device_fh:
+    device_dict = json.load(device_fh)
+ZServer = ZWave(config_dict["z_way_server"]["host"],
+                config_dict["z_way_server"]["port"],
+                device_dict)
 
-    while True:
-        if not row_count % 200 and __debug__:
-            print "Row count: %s" % row_count
+# Load the previous training window
+logged_Xdata = np.zeros([1, 1])
+try:
+    logged_Xdata = pickle.load(open(XLOG_FILENAME, "r"))
+except IOError:
+    print "***WARNING: No training backup found.***"
 
-        #get new data from pi
-        # TODO: Add try catch block here around get_data in case connection to 
-        # server fails then log failure to log file above
-        new_data = get_data(ZServer)
 
-        #get current energy reading
-        X[(row_count) % martix_length][num_sensors] = get_power(config_dict)
-        #Update X - new_data[0] contains a timestamp we don't need
-        for i in range(1, num_sensors):
-            #We have new valid data! Also update last_data
-            print "new_data[i],New_data Length, i, num_sensor",new_data[i], len(new_data), i, num_sensors
-            X[(row_count) % martix_length][i-1] = new_data[i]
-            if new_data[i] == last_data[i-1]:
-                last_data_count[i-1] += 1
-            else:
-                last_data[i-1] = new_data[i]
-                last_data_count[i-1] = 0
+############################################################
 
-        # Time to train:
-        if ((row_count+1) % forecasting_interval == 0
-                and row_count >= martix_length):
-            #unwrap the matrices
-            data = X[(row_count % martix_length):,:num_sensors]
-            data = np.concatenate((data, X[0:(row_count % martix_length), :num_sensors]), axis=0)
-            y = X[(row_count % martix_length):, num_sensors]
-            y = np.concatenate((y, X[:(row_count % martix_length), num_sensors]), axis=0)
+## VARIABLE INITIALIZATION ##
 
-            w_opt, a_opt, b_opt, S_N = train(data, y)
-            init_training = 1
+# Training statistics:
+w_opt = []
+a_opt = 0
+b_opt = 0
+mu = 0
+sigma = 1000
+THRESHOLD = 100000 #TODO, set this
+w, L = (.84, 3.719) # EWMA parameters. Other pairs can also be used, see paper
+Sn_1 = 0
+init_training = False
+alert_counter = 0
 
-        #make prediction:
-        if init_training:
-            x_n = X[(row_count) % martix_length][:num_sensors]
-            prediction = max(0, np.inner(w_opt,x_n))
-            target = X[(row_count) % martix_length][num_sensors]
+# num_sensors           -> Number of sensors in ZWave network
+# matrix_length         -> Number of rows in data matrix (X)
+# forecasting_interval  -> Time between training sessions
+# granularity           -> Time between sensor measurements
 
-            #log the new result
-            logging.info((dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-                          + " " + str(target) + " " + str(prediction)))
+num_sensors = len(ZServer.get_data_keys())
+matrix_length = int(sys.argv[2])*60/int(sys.argv[1])
+forecasting_interval = int(sys.argv[3])*60/int(sys.argv[1])
+granularity_in_seconds = int(sys.argv[1])*60
 
-            if __debug__:
-                print (dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-                       + " " + str(target) + " " + str(prediction))
+# X is the matrix containing the training data
+X = np.zeros([matrix_length, num_sensors+1]) #sensors, energy reading
 
-            #not currently used but will be necessary to flag user:
-            error = (prediction-target)
-            sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
-            # Catching pathogenic cases where variance (ie, sigma)
-            # gets really really small
-            if sigma < 1:
-                sigma = 1
+# Uset the previous X matrix to save time, if available 
+# Make sure logged_Xdata is the proper size
+if np.shape(logged_Xdata) == (matrix_length, num_sensors+1):
+    X = logged_Xdata
+    init_training = True
+else:
+    print "Unable to use training backup. Continuing analysis without backup..."
 
-            # Update severity metric
-            mu = mu; sigma = sigma
-            Sn, Zn = severityMetric(error, mu, sigma, w, Sn_1)
+y = [None]*matrix_length
 
-            #flag the user if necessary (error is greater than allowance)
-            #two-in-a-row counter, much like branch prediction
-            if np.abs(Sn) <= THRESHOLD:
-                alert_counter = 0
-            elif np.abs(Sn) > THRESHOLD and alert_counter == 0:
-                alert_counter = 1
-                Sn = Sn_1
-            elif np.abs(Sn) > THRESHOLD and alert_counter == 1:
-                Sn = 0
-                alert_counter = 0
-                logging.error("ANOMALY FOUND!")
-                if __debug__:
-                    print "ERROR: ANOMALY"
+# Keep track of number of times the same data has been repeated
+# TODO: Add logic to not use data if it is repeated too many times
+#       This is caused by sensors that have been turned off but report the same data
+last_data = [0]*num_sensors         # Last data
+last_data_count = [0]*num_sensors   # Number of polls since change of data
+last_data_threshold = 10            # Max number of polls to tolerate
 
-            Sn_1 = Sn
+############################################################
 
-        row_count += 1
-        #A rough sleeping approximation. The delay of the above logic is dependent on the number
-        #of sensors, and whether or not this iteration had to train. You could use a timer,
-        #but that seems like unnecessary extra work. For our purpose, and if the user is using a granularity
-        #of a minute or more, I think this error is negligible.
+print "Starting analysis..."
+
+row_count = 0
+
+while True:
+    if not row_count % 200 and __debug__:
+        print "Row count: %s" % row_count
+
+    #get new data from pi
+    # TODO: Add try catch block here around get_data in case connection to
+    # server fails then log failure to log file above
+    new_data = get_data(ZServer)
+
+    #get current energy reading
+    X[(row_count) % matrix_length][num_sensors] = get_power(config_dict)
+    #Update X - new_data[0] contains a timestamp we don't need
+    for i in range(1, num_sensors):
+        #We have new valid data! Also update last_data
+        print "new_data[i],New_data Length, i, num_sensor",new_data[i], len(new_data), i, num_sensors
+        X[(row_count) % matrix_length][i-1] = new_data[i]
+        if new_data[i] == last_data[i-1]:
+            last_data_count[i-1] += 1
+        else:
+            last_data[i-1] = new_data[i]
+            last_data_count[i-1] = 0
+
+    # Time to train:
+    if ((row_count+1) % forecasting_interval == 0
+            and row_count >= matrix_length):
+        #unwrap the matrices
+        data = X[(row_count % matrix_length):,:num_sensors]
+        data = np.concatenate((data, X[0:(row_count % matrix_length), :num_sensors]), axis=0)
+        y = X[(row_count % matrix_length):, num_sensors]
+        y = np.concatenate((y, X[:(row_count % matrix_length), num_sensors]), axis=0)
+
+        w_opt, a_opt, b_opt, S_N = train(data, y)
+        init_training = 1
+
+    #make prediction:
+    if init_training:
+        x_n = X[(row_count) % matrix_length][:num_sensors]
+        prediction = max(0, np.inner(w_opt,x_n))
+        target = X[(row_count) % matrix_length][num_sensors]
+
+        #log the new result
+        logging.info((dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+                      + " " + str(target) + " " + str(prediction)))
+
         if __debug__:
-            print (dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")) 
-        time.sleep(granularity_in_seconds - 2)
+            print (dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+                   + " " + str(target) + " " + str(prediction))
+
+        #not currently used but will be necessary to flag user:
+        error = (prediction-target)
+        sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
+        # Catching pathogenic cases where variance (ie, sigma)
+        # gets really really small
+        if sigma < 1:
+            sigma = 1
+
+        # Update severity metric
+        mu = mu; sigma = sigma
+        Sn, Zn = severityMetric(error, mu, sigma, w, Sn_1)
+
+        #flag the user if necessary (error is greater than allowance)
+        #two-in-a-row counter, much like branch prediction
+        if np.abs(Sn) <= THRESHOLD:
+            alert_counter = 0
+        elif np.abs(Sn) > THRESHOLD and alert_counter == 0:
+            alert_counter = 1
+            Sn = Sn_1
+        elif np.abs(Sn) > THRESHOLD and alert_counter == 1:
+            Sn = 0
+            alert_counter = 0
+            logging.error("ANOMALY FOUND!")
+            if __debug__:
+                print "ERROR: ANOMALY"
+
+        Sn_1 = Sn
+
+    row_count += 1
+    #A rough sleeping approximation. The delay of the above logic is dependent on the number
+    #of sensors, and whether or not this iteration had to train. You could use a timer,
+    #but that seems like unnecessary extra work. For our purpose, and if the user is using a granularity
+    #of a minute or more, I think this error is negligible.
+
+    pickle.dump(X, open(XLOG_FILENAME, "w"))
+    
+    if __debug__:
+        print (dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
+    time.sleep(granularity_in_seconds - 2)

@@ -5,3 +5,5 @@ config.json
 figures/*
 algoRun
 tensorflow
+*test*
+NextEnergyBLR.py
