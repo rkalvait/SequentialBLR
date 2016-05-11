@@ -4,3 +4,4 @@ config.json
 *.pyo
 figures/*
 algoRun
+tensorflow
