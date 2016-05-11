@@ -58,7 +58,7 @@ config = {
     'raise_on_warnings': True
 }
 
-print "Connecting to connect to DB"
+print "Connecting to database..."
 cnx = mysql.connector.connect(**config)
 cursor = cnx.cursor()
 
@@ -145,7 +145,7 @@ while startTime < endTime:
     if startTime > dt.datetime(2012, 5, 30) and startTime < dt.datetime(2012, 6, 1):
         startTime = dt.datetime(2012, 6, 1)
 
-    if(rowCount % 250 == 0):
+    if(rowCount % 240 == 0):
         print "trying time: %s " % startTime
 
     #Build the query:

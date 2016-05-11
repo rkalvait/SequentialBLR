@@ -145,7 +145,7 @@ while startTime < endTime:
     if startTime > dt.datetime(2012, 5, 30) and startTime < dt.datetime(2012, 6, 1):
         startTime = dt.datetime(2012, 6, 1)
 
-    if(rowCount % 250 == 0):
+    if(rowCount % 240 == 0):
         print "trying time: %s " % startTime
 
     #Build the query:
@@ -334,7 +334,7 @@ for ax in ax1, ax2:
     for label in ax.get_xticklabels():
         label.set_visible(False)
 
-plt.savefig('./figures/blr_detection_umass2.pdf')
+plt.savefig('./tf_figures/blr_detection_umass2.pdf')
 
 plt.rc('axes', grid=False)
 plt.rc('grid', color='0.75', linestyle='-', linewidth=0.5)
@@ -352,7 +352,7 @@ numBins = 200
 #p_array = p_array[~np.isnan(p_array)]
 #ax1.hist(p_array, numBins,color=GRAY, alpha=0.7)
 ax1.set_ylabel("P-value distribution")
-plt.savefig('./figures/pvalue_distribution_under_H0.pdf')
+plt.savefig('./tf_figures/pvalue_distribution_under_H0.pdf')
 
 cursor.close()
 cnx.close()
