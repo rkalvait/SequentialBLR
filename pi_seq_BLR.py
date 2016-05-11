@@ -1,36 +1,65 @@
 #!/usr/bin/python -O
-#
-#if you have any questions, email/text me - Davis
+
+#############################################
+########## NextEnergy BLR Analysis ##########
+#############################################
+
+# Filename:     pi_seq_BLR.py
+# Author(s):    dvorva, apadin, yabskbd
+# Start Date:   5/9/2016
+version_number = 1.0
+
+print "\n\n##### NextEnergy Electricity Usage Analysis #####"
+print "Version: ", version_number, "\n"
+
+if __debug__:
+    print "Running in debug mode...\n"
+else:
+    print "Starting program...\n"
+
+
+############################################################
+
+import sys
+
+if len(sys.argv) != 4:
+    print """Error: usage: python""", sys.argv[0], """ <granularity>
+            <window size> <forecasting interval>"""
+    print "Where granularity is the frequency of data collection, in minutes"
+    print "Where window size is the amount of remembered data, in hours"
+    print "Where forecasting interval is the time between trainings, in hours"
+    exit(1)
+
+print "Initializing libraries..."
 
 import datetime as dt
 import json
 import logging
 import time
-import sys
 import numpy as np
 
 from algoRunFunctions import train, severityMetric
 from get_data import get_data, get_power
 from zwave_api import ZWave
 
-if __name__ == "__main__":
-    if __debug__:
-        print "Starting algorithm run..."
-    if len(sys.argv) != 4:
-        print """Error: please run like: python pi_seq_BLR.py <granularity>
-                <window size> <forecasting interval>"""
-        print "Where granularity is the frequency of data collection, in minutes"
-        print "Where window size is the number of hours of remembered data"
-        print """"Where forecasting interval is the number of hours between
-                trainings"""
-        exit(1)
+SECS_PER_MIN = 60
+MINS_PER_HOUR = 60
+HOURS_PER_DAT = 24
 
-    FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-    DATE_FORMAT = '%m/%d/%Y %I:%M:%S %p'
-    logging.basicConfig(filename='/var/log/sequential_predictions.log',
-                        level=logging.DEBUG,
-                        format=FORMAT,
-                        datefmt=DATE_FORMAT)
+
+############################################################
+
+#if __name__ == "__main__":
+
+
+print "Loading configuration settings..."
+
+FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
+DATE_FORMAT = '%m/%d/%Y %I:%M:%S %p'
+logging.basicConfig(filename='/var/log/sequential_predictions.log',
+                    level=logging.DEBUG,
+                    format=FORMAT,
+                    datefmt=DATE_FORMAT)
 
     # Training statistics:
     w_opt = []
