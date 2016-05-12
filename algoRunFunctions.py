@@ -1,5 +1,6 @@
 from urllib import urlopen
 import json
+import time
 import numpy as np
 import scipy as sp
 import sys
@@ -7,12 +8,13 @@ import scipy.stats
 
 import os
 
-#import tensorflow as tf
+import tensorflow as tf
 
 import sys
 import scipy as sp
 import scipy.stats
 
+graph = tf.Graph()
 
 debug = 0
 
@@ -36,53 +38,61 @@ def tf_train(X_train, y_train):
     
     ##### TENSORFLOW ADDITIONS #####
 
-    # First turn y_train into a [n, 1] matrix
-    y_train = np.reshape(y_train, (len(y_train), 1))
+    before_time = time.time()
 
-    # If data values are too large, tensorflow will be inaccurate
-    # Divide both X and y by the same value so that W is not affected
-    (X_rows, X_cols) = np.shape(X_train)
-    divisor = min(X_train.max(), y_train.max())
+    with graph.as_default():
 
-    for (x, y), value in np.ndenumerate(X_train):
-        X_train[x, y] /= divisor
+        graph.__init__()
 
-    for (x, y), value in np.ndenumerate(y_train):
-        y_train[x, y] /= divisor
+        # First turn y_train into a [n, 1] matrix
+        y_train = np.reshape(y_train, (len(y_train), 1))
 
-    W = tf.Variable(tf.zeros([X_cols, 1]))      # Weight matrix
+        # If data values are too large, analysis will not converge
+        # Divide both X and y by the same value so that W is not affected
+        (X_rows, X_cols) = np.shape(X_train)
+        divisor = min(X_train.max(), y_train.max())
 
-    # y = W*x
-    y = tf.matmul(X_train, W)
+        for (x, y), value in np.ndenumerate(X_train):
+            X_train[x, y] /= divisor
 
-    # Minimize the mean squared errors
-    loss = tf.reduce_mean(tf.square(y - y_train))
-    train_step = tf.train.GradientDescentOptimizer(0.5).minimize(loss)
+        for (x, y), value in np.ndenumerate(y_train):
+            y_train[x, y] /= divisor
 
-    # Initialize variables and session
-    init = tf.initialize_all_variables()
-    sess = tf.Session()
-    sess.run(init)
+        W = tf.Variable(tf.zeros([X_cols, 1]))      # Weight matrix
+        b = tf.Variable(tf.zeros([1]))
 
-    # Train the model
-    for iter in xrange(100):
-        #if iter % 20 == 0:
-        #    print sess.run(W)
-        #    raw_input("press enter")
-        sess.run(train_step)
+        # y = W*x
+        y = tf.matmul(X_train, W)
 
-    # Return the model parameters
-    print 'Training Loss:', sess.run(loss)
+        # Minimize the mean squared errors
+        loss = tf.reduce_mean(tf.square(y - y_train))
+        train_step = tf.train.GradientDescentOptimizer(0.5).minimize(loss)
 
-    w_opt = np.transpose(sess.run(W))
+        # Initialize variables and session
+        init = tf.initialize_all_variables()
+        sess = tf.Session()
+        sess.run(init)
 
-    return w_opt
+        # Train the model
+        for iter in xrange(100):
+            sess.run(train_step)
+
+        # Return the model parameters
+        print 'Training Loss:', sess.run(loss)
+
+        w_opt = np.transpose(sess.run(W))
+
+        print "Time elapsed: ", time.time() - before_time
+        
+        return w_opt
     
 
 def train(X, y):
     # This function is used for training our Bayesian model
     # Returns the regression parameters w_opt, and alpha, beta, S_N
     # needed for the predictive distribution
+
+    before_time = time.time()
 
     Phi = X # the measurement matrix of the input variables x (i.e., features)
     t   = y # the vector of observations for the target variable
@@ -126,6 +136,8 @@ def train(X, y):
     S_N = np.linalg.inv(alpha*np.eye(M) + beta*PhiT_Phi)
     m_N = beta * np.dot(S_N, np.dot(np.transpose(Phi), t))
     w_opt = m_N
+
+    print "Time elapsed: ", time.time() - before_time
 
     return (w_opt, alpha, beta, S_N)
 
