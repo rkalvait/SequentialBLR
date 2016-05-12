@@ -16,13 +16,13 @@ class ZWave(object):
     """Class designed to store and retrieve information
     pertinent to contacting Zwave devices and the Zway server
     """
-    #class varibale shared by all instances
-    #1.Some sort of Repersentation of the JSON file
-    #2.List of all devices
-    #3.Keep track of all the types
+    # class variable shared by all instances
+    # 1.Some sort of Representation of the JSON file
+    # 2.List of all devices
+    # 3.Keep track of all the types
     def __init__(self, server_ip, server_port,
                  device_settings_dict):
-        #class varibale unquie to each instance
+        #class variable unquie to each instance
         self._server_ip = server_ip
         self._server_port = server_port
         self._devices = {}

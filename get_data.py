@@ -3,6 +3,7 @@
 # Author: Maxwell Morgan, 2016-04-11
 #
 
+import sys
 import time
 import pymssql
 
@@ -14,7 +15,20 @@ def get_data(z_server):
     data_list.append(int(time.time()))
     ## get data from sensors ##
     for (device_id, key) in z_server.list_device_ids():
-        data_dict = z_server.get_data(device_id)
+
+    for x in xrange(10):
+
+        try:
+            data_dict = z_server.get_data(device_id)
+            x = 10
+        except Exception:
+            if x == 10:
+                print "Server connection lost. Closing down."
+                sys.exit(1)
+            else:
+                print "Server connection timed out. Attempting to reconnect"
+                sleep(1)
+    
         for unique_id, data_value in data_dict.iteritems():
             data_list.append(data_value)
     #print "Data_List: ", data_list
