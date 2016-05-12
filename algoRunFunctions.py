@@ -7,7 +7,7 @@ import scipy.stats
 
 import os
 
-import tensorflow as tf
+#import tensorflow as tf
 
 import sys
 import scipy as sp

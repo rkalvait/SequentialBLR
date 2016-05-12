@@ -229,5 +229,5 @@ while True:
         time.sleep(goal_time - time.time() - 0.01)
     except Exception:
         if __debug___:
-            print "**WARNING: Skipping sleeping due to timing issues.***
+            print "**WARNING: Skipping sleeping due to timing issues.***"
 
