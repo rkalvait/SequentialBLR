@@ -55,7 +55,7 @@ SECS_PER_MIN = 60
 MINS_PER_HOUR = 60
 HOURS_PER_DAT = 24
 
-# Logging script activity
+# Logging analysis results
 FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 DATE_FORMAT = '%m/%d/%Y %I:%M:%S %p'
 logging.basicConfig(filename='/var/log/sequential_predictions.log',
@@ -143,9 +143,9 @@ while True:
     # Record the time of the next iteration
     goal_time += granularity_in_seconds
     if __debug__:
-        print "Trying time", time.time()
+        print "Trying time", dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 
-    if not row_count % 200 and __debug__:
+    if (not row_count % 200) and __debug__:
         print "Row count: %s" % row_count
 
     #get new data from pi
@@ -225,6 +225,9 @@ while True:
     row_count += 1
     
     # Sleeping approximation (takes approx. 0.01 seconds to run)
-    time.sleep(goal_time - time.time() - 0.01)
-
+    try:
+        time.sleep(goal_time - time.time() - 0.01)
+    except Exception:
+        if __debug___:
+            print "**WARNING: Skipping sleeping due to timing issues.***
 
