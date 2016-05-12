@@ -156,7 +156,7 @@ while True:
     #get current energy reading
     X[(row_count) % matrix_length][num_sensors] = get_power(config_dict)
     #Update X - new_data[0] contains a timestamp we don't need
-    for i in range(1, num_sensors):
+    for i in range(1, num_sensors + 1):
         #We have new valid data! Also update last_data
         print "new_data[i],New_data Length, i, num_sensor",new_data[i], len(new_data), i, num_sensors
         X[(row_count) % matrix_length][i-1] = new_data[i]
@@ -166,6 +166,7 @@ while True:
             last_data[i-1] = new_data[i]
             last_data_count[i-1] = 0
 
+    print"Row_Count, Forcast_Int, Matrix_len", row_count, forecasting_interval, matrix_length
     # Time to train:
     if ((row_count+1) % forecasting_interval == 0
             and row_count >= matrix_length):
