@@ -65,7 +65,7 @@ def tf_train(X_train, y_train):
     sess.run(init)
 
     # Train the model
-    for iter in xrange(500):
+    for iter in xrange(100):
         #if iter % 20 == 0:
         #    print sess.run(W)
         #    raw_input("press enter")
@@ -90,7 +90,7 @@ def train(X, y):
     # Init values for  hyper-parameters alpha, beta
     alpha = 5*10**(-3)
     beta = 5
-    max_iter = 500
+    max_iter = 100
     k = 0
 
     PhiT_Phi = np.dot(np.transpose(Phi), Phi)
