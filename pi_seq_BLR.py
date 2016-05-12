@@ -134,7 +134,17 @@ print "Starting analysis..."
 
 row_count = 0
 
+# Allign time to the second
+goal_time = float(int(time.time() + 1.0))
+time.sleep(goal_time-time.time())
+
 while True:
+
+    # Record the time of the next iteration
+    goal_time += granularity_in_seconds
+    if __debug__:
+        print "Trying time", time.time()
+
     if not row_count % 200 and __debug__:
         print "Row count: %s" % row_count
 
@@ -213,12 +223,8 @@ while True:
         Sn_1 = Sn
 
     row_count += 1
-    #A rough sleeping approximation. The delay of the above logic is dependent on the number
-    #of sensors, and whether or not this iteration had to train. You could use a timer,
-    #but that seems like unnecessary extra work. For our purpose, and if the user is using a granularity
-    #of a minute or more, I think this error is negligible.
-
     
-    if __debug__:
-        print (dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
-    time.sleep(granularity_in_seconds - 2)
+    # Sleeping approximation (takes approx. 0.01 seconds to run)
+    time.sleep(goal_time - time.time() - 0.01)
+
+

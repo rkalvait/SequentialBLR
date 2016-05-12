@@ -16,18 +16,18 @@ def get_data(z_server):
     ## get data from sensors ##
     for (device_id, key) in z_server.list_device_ids():
 
-    for x in xrange(10):
-
-        try:
-            data_dict = z_server.get_data(device_id)
-            x = 10
-        except Exception:
-            if x == 10:
-                print "Server connection lost. Closing down."
-                sys.exit(1)
-            else:
-                print "Server connection timed out. Attempting to reconnect"
-                sleep(1)
+        # If the server does not respond after ten attempts respond, exit
+        for x in xrange(10):
+            try:
+                data_dict = z_server.get_data(device_id)
+                x = 10
+            except Exception:
+                if x == 10:
+                    print "Server connection lost. Closing down."
+                    sys.exit(1)
+                else:
+                    print "Server connection timed out. Attempting to reconnect"
+                    sleep(1)
     
         for unique_id, data_value in data_dict.iteritems():
             data_list.append(data_value)
@@ -44,12 +44,21 @@ def get_power(config_info):
     port = config_info["database"]["credentials"]["port"]
     database = config_info["database"]["credentials"]["database_name"]
 
-    # TODO, add try catch block here when connecting to the server
     host = host + " " + port
-    cnx = pymssql.connect(server=host, user=user, password=password, database=database)
+
+    # Connect to database
+    try:
+        cnx = pymssql.connect(server=host,
+                              user=user,
+                              password=password,
+                              database=database)
+    except Exception:
+        print "Could not connect to power database."
+        raise Exception
 
     cursor = cnx.cursor()
 
+    # Query the database
     qry_base = "SELECT TOP 1 "
 
     for data_column in config_info["database"]["table"]["data_columns"]:
@@ -64,6 +73,9 @@ def get_power(config_info):
            + " ORDER BY [") + (config_info["database"]["table"]["time_column"] + "] DESC")
     
     cursor.execute(qry)
+
+    # Aggregate power to a single number
+    # TODO, aggregate the power values in some way
     final_power = 0
     for row in cursor:
         # this is where the value are, index the row returned
@@ -71,6 +83,6 @@ def get_power(config_info):
         # data column, etc.
        do_stuff = row[0]
        final_power = row[0]
-    # TODO, aggregate the power values in some way
+
     cnx.close()
     return final_power
