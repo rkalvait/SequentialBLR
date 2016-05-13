@@ -8,6 +8,7 @@ import scipy.stats
 
 import os
 
+<<<<<<< HEAD
 #import tensorflow as tf
 
 import sys
@@ -16,6 +17,8 @@ import scipy.stats
 
 #graph = tf.Graph()
 
+=======
+>>>>>>> 2cc2e7a7ddd9045f7d0029ae4c2cd01143d2ac51
 debug = 0
 
 def movingAverage(interval, window_size):
@@ -32,67 +35,11 @@ def runnable(arrayIn):
                 countValid += 1
 
     return float(countValid)/countAll
-
-
-def tf_train(X_train, y_train):
     
-    ##### TENSORFLOW ADDITIONS #####
-
-    before_time = time.time()
-
-    with graph.as_default():
-
-        graph.__init__()
-
-        # First turn y_train into a [n, 1] matrix
-        y_train = np.reshape(y_train, (len(y_train), 1))
-
-        # If data values are too large, analysis will not converge
-        # Divide both X and y by the same value so that W is not affected
-        (X_rows, X_cols) = np.shape(X_train)
-        divisor = min(X_train.max(), y_train.max())
-
-        for (x, y), value in np.ndenumerate(X_train):
-            X_train[x, y] /= divisor
-
-        for (x, y), value in np.ndenumerate(y_train):
-            y_train[x, y] /= divisor
-
-        W = tf.Variable(tf.zeros([X_cols, 1]))      # Weight matrix
-        b = tf.Variable(tf.zeros([1]))
-
-        # y = W*x
-        y = tf.matmul(X_train, W)
-
-        # Minimize the mean squared errors
-        loss = tf.reduce_mean(tf.square(y - y_train))
-        train_step = tf.train.GradientDescentOptimizer(0.5).minimize(loss)
-
-        # Initialize variables and session
-        init = tf.initialize_all_variables()
-        sess = tf.Session()
-        sess.run(init)
-
-        # Train the model
-        for iter in xrange(100):
-            sess.run(train_step)
-
-        # Return the model parameters
-        print 'Training Loss:', sess.run(loss)
-
-        w_opt = np.transpose(sess.run(W))
-
-        print "Time elapsed: ", time.time() - before_time
-        
-        return w_opt
-    
-
 def train(X, y):
     # This function is used for training our Bayesian model
     # Returns the regression parameters w_opt, and alpha, beta, S_N
     # needed for the predictive distribution
-
-    before_time = time.time()
 
     Phi = X # the measurement matrix of the input variables x (i.e., features)
     t   = y # the vector of observations for the target variable
@@ -136,8 +83,6 @@ def train(X, y):
     S_N = np.linalg.inv(alpha*np.eye(M) + beta*PhiT_Phi)
     m_N = beta * np.dot(S_N, np.dot(np.transpose(Phi), t))
     w_opt = m_N
-
-    print "Time elapsed: ", time.time() - before_time
 
     return (w_opt, alpha, beta, S_N)
 
