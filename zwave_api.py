@@ -81,7 +81,7 @@ class ZWave(object):
                    + self._server_ip + ":"
                    + self._server_port
                    + "/ZWaveAPI/Run/devices["
-                   + device_id + "].instances[")
+                   + str(int(float(device_id))) + "].instances[")
 
         # dictionary storing data point descriptor as key and
         # data point url
@@ -106,7 +106,7 @@ class ZWave(object):
                    + self._server_ip + ":"
                    + self._server_port
                    + "/ZWaveAPI/Run/devices["
-                   + device_id + "].instances[")
+                   + str(int(float(device_id))) + "].instances[")
 
         data_dicts = self._devices[str(device_id)]["data"]
         for data_key, data_dict in data_dicts.iteritems():
@@ -157,6 +157,6 @@ class ZWave(object):
         stored in the object
         """
         device_ids = []
-        for device_num in self._devices.iteritems():
+        for device_num, key in self._devices.iteritems():
             device_ids.append(device_num)
         return device_ids

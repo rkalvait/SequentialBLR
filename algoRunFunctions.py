@@ -8,13 +8,13 @@ import scipy.stats
 
 import os
 
-import tensorflow as tf
+#import tensorflow as tf
 
 import sys
 import scipy as sp
 import scipy.stats
 
-graph = tf.Graph()
+#graph = tf.Graph()
 
 debug = 0
 

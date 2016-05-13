@@ -71,7 +71,8 @@ with open("./config/sensors.json") as device_fh:
 ZServer = ZWave(config_dict["z_way_server"]["host"],
                 config_dict["z_way_server"]["port"],
                 device_dict)
-
+ZServer_devices = ZServer.list_devices()
+print ZServer_devices
 # Load the previous training window
 logged_Xdata = np.zeros([1, 1])
 try:
@@ -158,7 +159,7 @@ while True:
     #Update X - new_data[0] contains a timestamp we don't need
     for i in range(1, num_sensors + 1):
         #We have new valid data! Also update last_data
-        print "new_data[i],New_data Length, i, num_sensor",new_data[i], len(new_data), i, num_sensors
+        print "{}: {}".format(ZServer_devices[i-1], new_data[i], len(new_data), i, num_sensors)
         X[(row_count) % matrix_length][i-1] = new_data[i]
         if new_data[i] == last_data[i-1]:
             last_data_count[i-1] += 1
@@ -166,9 +167,8 @@ while True:
             last_data[i-1] = new_data[i]
             last_data_count[i-1] = 0
 
-    print"Row_Count, Forcast_Int, Matrix_len", row_count, forecasting_interval, matrix_length
     # Time to train:
-    if ((row_count+1) % forecasting_interval == 0
+    if ((row_count) % forecasting_interval == 0
             and row_count >= matrix_length):
         #unwrap the matrices
         data = X[(row_count % matrix_length):,:num_sensors]
@@ -183,7 +183,7 @@ while True:
     #make prediction:
     if init_training:
         x_n = X[(row_count) % matrix_length][:num_sensors]
-        print "sizes of w_opt, x_n",w_opt,x_n
+        print "w_opt, x_n",w_opt,x_n
         prediction = max(0, np.inner(w_opt,x_n))
         target = X[(row_count) % matrix_length][num_sensors]
 

@@ -14,8 +14,7 @@ def get_data(z_server):
     data_list = []
     data_list.append(int(time.time()))
     ## get data from sensors ##
-    for (device_id, key) in z_server.list_device_ids():
-
+    for (device_id) in z_server.list_device_ids():
         # If the server does not respond after ten attempts respond, exit
         for x in xrange(10):
             try:
@@ -73,7 +72,6 @@ def get_power(config_info):
            + " ORDER BY [") + (config_info["database"]["table"]["time_column"] + "] DESC")
     
     cursor.execute(qry)
-
     # Aggregate power to a single number
     # TODO, aggregate the power values in some way
     final_power = 0
@@ -81,8 +79,7 @@ def get_power(config_info):
         # this is where the value are, index the row returned
         # like row[0] for first data column, row[1] for second
         # data column, etc.
-       do_stuff = row[0]
-       final_power = row[0]
-
+       final_power = row[0] + row[1] + 4.068189 #offset shark_1 to zero
+       print "Shark_2, Shark_1, Final Power", row[0], row[1] + 4.068189, final_power
     cnx.close()
     return final_power
