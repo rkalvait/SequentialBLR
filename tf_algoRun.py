@@ -4,7 +4,7 @@ import json
 import numpy as np
 import datetime as dt
 from algoRunFunctions import movingAverage
-from algoRunFunctions import tf_train
+from tf_functions import tf_train
 from algoRunFunctions import runnable
 from algoRunFunctions import severityMetric
 from sklearn.metrics import recall_score
