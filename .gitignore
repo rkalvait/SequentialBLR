@@ -6,4 +6,5 @@ figures/*
 algoRun
 tensorflow
 *test*
-NextEnergyBLR.py
+*.bak
+!X_data.bak
