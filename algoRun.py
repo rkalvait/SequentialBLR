@@ -15,6 +15,7 @@ from datetime import date
 import random
 import scipy as sp
 import scipy.stats
+import pickle
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -137,8 +138,6 @@ X =  np.zeros([matrixLength, len(columns)])
 Xt =  [None]*matrixLength
 y = [None]*matrixLength
 
-grapher = Grapher()
-
 print "Beginning analysis..."
 
 while startTime < endTime:
@@ -209,12 +208,6 @@ while startTime < endTime:
             #time = Xt[(rowCount % matrixLength):]
             #time += Xt[:(rowCount % matrixLength)]
 
-            # For tf_train
-            #w_opt = tf_train(data, y)
-            #a_opt = 1
-            #b_opt = 1
-            #S_N = 1
-
             # For BLR train
             w_opt, a_opt, b_opt, S_N = train(data, y)
             initTraining = 1
@@ -259,7 +252,20 @@ while startTime < endTime:
     rowCount += 1
 
     if(rowCount % forecastingInterval == 0 and initTraining):
-        grapher.graph_data(y_time, y_target, y_predictions)
+        
+        # Write the pickled data for graphing
+        file = open("y_time.bak", "wb")
+        pickle.dump(y_time, file)
+        file.close()
+        
+        file = open("y_target.bak", "wb")
+        pickle.dump(y_target, file)
+        file.close()
+
+        file = open("y_predict.bak", "wb")
+        pickle.dump(y_predictions, file)
+        file.close()
+        
 
 
 print "Analysis complete."
