@@ -3,7 +3,6 @@ from urllib import urlopen
 import json
 import numpy as np
 import datetime as dt
-from grapher import Grapher
 from algoRunFunctions import movingAverage
 from algoRunFunctions import train
 from algoRunFunctions import runnable

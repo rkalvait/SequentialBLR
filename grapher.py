@@ -43,8 +43,8 @@ class Grapher:
         self._graph_error.xaxis.set_major_locator(LinearLocator(numticks=6))
 
         # Add legend
-        target_key = Line2D([], [], color='blue', label='Target')
-        predict_key = Line2D([], [], color='red', linestyle='--', label='Prediction')
+        predict_key = Line2D([], [], color='0.75', label='Prediction')
+        target_key = Line2D([], [], color='red', linestyle='--', label='Target')
         error_key = Line2D([], [], color='red', label='Error')
 
         self._graph_predict.legend(handles=[target_key, predict_key])
@@ -61,9 +61,9 @@ class Grapher:
             diff.append(y_predict[i] - y_target[i])
     
         # Initialize lines
-        line1, line2 = self._graph_predict.plot(y_time, y_target, 'b',
-                                                y_time, y_predict, 'r--')
-
+        line1, line2 = self._graph_predict.plot(y_time, y_predict, '0.75',
+                                                y_time, y_target, 'r--')
+                                                
         line3, = self._graph_error.plot(y_time, diff, 'r')
 
         # Set x and y axis limits

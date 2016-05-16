@@ -43,6 +43,7 @@ while True:
     assert len(y_target) == len(y_predict)
     assert len(y_target) == len(y_time)
 
+    print "Graphing at time", y_time[-1]
     grapher.graph_data(y_time, y_target, y_predict)
 
     try:
