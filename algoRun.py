@@ -3,6 +3,7 @@ from urllib import urlopen
 import json
 import numpy as np
 import datetime as dt
+from grapher import Grapher
 from algoRunFunctions import movingAverage
 from algoRunFunctions import train
 from algoRunFunctions import runnable
@@ -18,7 +19,7 @@ import scipy.stats
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
-print "Starting algorithm run..."
+print "Starting program..."
 
 y_predictions = []
 y_target = []
@@ -61,9 +62,9 @@ print "Connecting to database..."
 cnx = mysql.connector.connect(**config)
 cursor = cnx.cursor()
 
+print "Reading configuration files..."
 with open('smartDriver.json') as data_file:
     jsonDataFile = json.load(data_file)
-print "Found JSON file."
 
 #Period: length of forecasting window, in hours
 #Granularity: time between data, in minutes
@@ -136,7 +137,9 @@ X =  np.zeros([matrixLength, len(columns)])
 Xt =  [None]*matrixLength
 y = [None]*matrixLength
 
-print "Beginning analysis."
+grapher = Grapher()
+
+print "Beginning analysis..."
 
 while startTime < endTime:
 
@@ -235,6 +238,8 @@ while startTime < endTime:
         error = (y_predictions[-1]-y_target[-1])
         sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
 
+        y_time.append(Xt[(rowCount-1) % matrixLength])
+
         # Catching pathogenic cases where variance (ie, sigma) gets too small
         if sigma < 1:
             sigma = 1
@@ -249,10 +254,12 @@ while startTime < endTime:
         p_array.append(p)
 
 
-    y_time.append(Xt[(rowCount-1) % matrixLength])
     #Increment and loop
     startTime += dt.timedelta(0,granularityInSeconds)
     rowCount += 1
+
+    if(rowCount % forecastingInterval == 0 and initTraining):
+        grapher.graph_data(y_time, y_target, y_predictions)
 
 
 print "Analysis complete."

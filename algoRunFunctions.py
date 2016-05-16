@@ -8,7 +8,6 @@ import scipy.stats
 
 import os
 
-<<<<<<< HEAD
 #import tensorflow as tf
 
 import sys
@@ -17,8 +16,6 @@ import scipy.stats
 
 #graph = tf.Graph()
 
-=======
->>>>>>> 2cc2e7a7ddd9045f7d0029ae4c2cd01143d2ac51
 debug = 0
 
 def movingAverage(interval, window_size):
@@ -85,8 +82,6 @@ def train(X, y):
     w_opt = m_N
 
     return (w_opt, alpha, beta, S_N)
-
-
 
 
 def severityMetric(error, mu, sigma, w, Sn_1):
