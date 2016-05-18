@@ -22,7 +22,7 @@ def tf_train(X_train, y_train):
         y_train = np.reshape(y_train, (col_length, 1))
 
         #X_train = np.concatenate((X_train, np.ones([col_length, 1], np.float32)), 1)
-        print X_train[0]
+
         # If data values are too large, analysis will not converge
         # Divide both X and y by the same value so that W is not affected
         (X_rows, X_cols) = np.shape(X_train)
