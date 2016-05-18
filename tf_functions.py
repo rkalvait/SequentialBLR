@@ -18,8 +18,11 @@ def tf_train(X_train, y_train):
         graph.__init__() # clear operations
 
         # First turn y_train into a [n, 1] matrix
-        y_train = np.reshape(y_train, (len(y_train), 1))
+        col_length = len(y_train)
+        y_train = np.reshape(y_train, (col_length, 1))
 
+        #X_train = np.concatenate((X_train, np.ones([col_length, 1], np.float32)), 1)
+        print X_train[0]
         # If data values are too large, analysis will not converge
         # Divide both X and y by the same value so that W is not affected
         (X_rows, X_cols) = np.shape(X_train)
@@ -32,7 +35,6 @@ def tf_train(X_train, y_train):
             y_train[x, y] /= divisor
 
         W = tf.Variable(tf.zeros([X_cols, 1]))      # Weight matrix
-        b = tf.Variable(tf.zeros([1]))
 
         # y = W*x
         y = tf.matmul(X_train, W)
