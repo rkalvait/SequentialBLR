@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from matplotlib.dates import DateFormatter
 from matplotlib.ticker import LinearLocator
 from matplotlib.lines import Line2D
+import pickle
+import time
 
 class Grapher:
 
@@ -85,4 +87,52 @@ class Grapher:
 
         # Draw the plot
         plt.draw()
+
+# Driver for graphing at any time (regardless of algorithm)
+def main():
+
+    grapher = Grapher()
+
+    goal_time = float(int(time.time() + 1.0))
+    time.sleep(goal_time-time.time())
+
+    while True:
+
+        goal_time += 10.0
+
+        while True:
+            try:
+                file = open("y_time.bak", "rb")
+                y_time = pickle.load(file)
+                file.close()
+            
+                file = open("y_target.bak", "rb")
+                y_target = pickle.load(file)
+                file.close()
+
+                file = open("y_predict.bak", "rb")
+                y_predict = pickle.load(file)
+                file.close()
+
+                break
+
+            except Exception:
+                print ("File in use. Trying again.")
+
+        assert len(y_target) == len(y_predict)
+        assert len(y_target) == len(y_time)
+
+        print "Graphing at time", y_time[-1]
+        grapher.graph_data(y_time, y_target, y_predict)
+
+        try:
+            time.sleep(goal_time - time.time())
+        except Exception:
+            print "Sleep time negative. Skipping sleep"
+
+
+if __name__ == "__main__":
+    main()
         
+        
+

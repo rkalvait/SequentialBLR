@@ -3,6 +3,8 @@ from urllib import urlopen
 import json
 import numpy as np
 import datetime as dt
+import time
+from tf_functions import tf_train
 from algoRunFunctions import movingAverage
 from algoRunFunctions import train
 from algoRunFunctions import runnable
@@ -15,6 +17,7 @@ import random
 import scipy as sp
 import scipy.stats
 import pickle
+import subprocess
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -133,7 +136,7 @@ if(int(jsonDataFile["specifyTime"])):
 granularityInSeconds = int(jsonDataFile["granularity"])*60
 
 #X window init.
-X =  np.zeros([matrixLength, len(columns)])
+X =  np.zeros([matrixLength, len(columns)], np.float32)
 Xt =  [None]*matrixLength
 y = [None]*matrixLength
 
@@ -208,7 +211,10 @@ while startTime < endTime:
             #time += Xt[:(rowCount % matrixLength)]
 
             # For BLR train
-            w_opt, a_opt, b_opt, S_N = train(data, y)
+            #w_opt, a_opt, b_opt, S_N = train(data, y)
+
+            # For TF train            
+            w_opt, a_opt, b_opt, S_N = tf_train(data, y)
             initTraining = 1
 
         else:
@@ -264,7 +270,9 @@ while startTime < endTime:
         file = open("y_predict.bak", "wb")
         pickle.dump(y_predictions, file)
         file.close()
-        
+
+        nf_command = "rsync -arvz y_time.bak y_target.bak y_predict.bak blueberry:"
+        p = subprocess.Popen(nf_command, bufsize=-1, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 
 print "Analysis complete."

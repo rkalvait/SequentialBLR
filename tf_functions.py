@@ -8,19 +8,14 @@ import tensorflow as tf
 
 graph = tf.Graph()
 
-debug = 1
-
 ## Tensorflow Train ###
 def tf_train(X_train, y_train):
-
-    before_time = time.time() #debug
 
     # In order to prevent memory leaks from re-making the graph every time,
     # must clear the operations from the graph on each run
     with graph.as_default():
 
         graph.__init__() # clear operations
-        
 
         # First turn y_train into a [n, 1] matrix
         y_train = np.reshape(y_train, (len(y_train), 1))
@@ -43,6 +38,7 @@ def tf_train(X_train, y_train):
         y = tf.matmul(X_train, W)
 
         # Minimize the mean squared errors
+        #loss = tf.reduce_mean(-tf.reduce_sum(y_train * tf.log(y)))
         loss = tf.reduce_mean(tf.square(y - y_train))
         train_step = tf.train.GradientDescentOptimizer(0.5).minimize(loss)
 
@@ -52,16 +48,13 @@ def tf_train(X_train, y_train):
         sess.run(init)
 
         # Train the model
-        for iter in xrange(100):
+        for iter in xrange(200):
             sess.run(train_step)
+            #print "Loss:", sess.run(W)
+            #raw_input("press enter")
+
+        print "Loss:", sess.run(loss)
 
         # Return the model parameters
-        if debug:
-            print 'Training Loss:', sess.run(loss)
-
         w_opt = np.transpose(sess.run(W))
-
-        if debug:
-            print "Time elapsed: ", time.time() - before_time
-        
-        return w_opt
+        return w_opt, 1, 1, 1
