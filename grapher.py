@@ -53,7 +53,6 @@ class Grapher:
         self._graph_error.legend(handles=[error_key])
 
         
-
     # Plot the data
     def graph_data(self, y_time, y_target, y_predict):
 
@@ -83,10 +82,12 @@ class Grapher:
         self._graph_predict.set_ylim(ymin, ymax)
 
         self._graph_error.set_xlim(xmin, xmax)
-        self._graph_error.set_ylim(diffmin, diffmax)
-
+        #self._graph_error.set_ylim(diffmin, diffmax)
+        self._graph_error.set_ylim(-3000, 3000)
+        
         # Draw the plot
         plt.draw()
+
 
 # Driver for graphing at any time (regardless of algorithm)
 def main():
@@ -126,7 +127,7 @@ def main():
         grapher.graph_data(y_time, y_target, y_predict)
 
         try:
-            time.sleep(goal_time - time.time())
+            plt.pause(goal_time - time.time())
         except Exception:
             print "Sleep time negative. Skipping sleep"
 

@@ -111,7 +111,7 @@ granularity_in_seconds = int(sys.argv[1])*60
 # X is the matrix containing the training data
 X = np.zeros([matrix_length, num_sensors+1]) #sensors, energy reading
 
-# Uset the previous X matrix to save time, if available 
+# Use the previous X matrix to save time, if available 
 # Make sure logged_Xdata is the proper size
 if np.shape(logged_Xdata) == (matrix_length, num_sensors+1):
     print "sizes: logged, mat, num", np.shape(logged_Xdata), matrix_length, num_sensors+1
