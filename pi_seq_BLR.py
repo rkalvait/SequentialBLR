@@ -155,7 +155,8 @@ while True:
     new_data = get_data(ZServer)
 
     #get current energy reading
-    X[(row_count) % matrix_length][num_sensors] = get_power(config_dict)
+    X[row_count % matrix_length][num_sensors] = get_power(config_dict)
+
     #Update X - new_data[0] contains a timestamp we don't need
     for i in range(1, num_sensors + 1):
         #We have new valid data! Also update last_data
@@ -168,7 +169,7 @@ while True:
             last_data_count[i-1] = 0
 
     # Time to train:
-    if ((row_count) % forecasting_interval == 0
+    if (row_count % forecasting_interval == 0
             and row_count >= matrix_length):
         #unwrap the matrices
         data = X[(row_count % matrix_length):,:num_sensors]
@@ -198,6 +199,7 @@ while True:
         #not currently used but will be necessary to flag user:
         error = (prediction-target)
         sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
+
         # Catching pathogenic cases where variance (ie, sigma)
         # gets really really small
         if sigma < 1:
@@ -224,11 +226,27 @@ while True:
         Sn_1 = Sn
 
     row_count += 1
+
+    # If just trained, write results for graphing
+    if(rowCount % trainingInterval == 0 and initTraining):
+        
+        # Write the pickled data for graphing
+        file = open("y_time.bak", "wb")
+        pickle.dump(y_time, file)
+        file.close()
+        
+        file = open("y_target.bak", "wb")
+        pickle.dump(y_target, file)
+        file.close()
+
+        file = open("y_predict.bak", "wb")
+        pickle.dump(y_predictions, file)
+        file.close()
     
     # Sleeping approximation (takes approx. 0.01 seconds to run)
     try:
         time.sleep(goal_time - time.time() - 0.01)
-    except Exception:
+    except ValueError:
         if __debug___:
             print "**WARNING: Skipping sleeping due to timing issues.***"
 
