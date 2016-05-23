@@ -14,82 +14,77 @@ class Grapher:
 
     # Constructor
     def __init__(self):
-        
+
         plt.ion() # Allows interactice session, animate the graph
 
         # Create figure and added main title
-        fig = plt.figure(figsize=(20, 10))
+        fig = plt.figure()
         fig.suptitle("Sequential BLR: Prediction and Error", fontsize=18)
-        
-        self._graph_predict = fig.add_subplot(211) # Target versus prediction
-        self._graph_error = fig.add_subplot(212) # Error (target - prediction)
+
+        self.graph_predict = fig.add_subplot(211) # Target versus prediction
+        self.graph_error = fig.add_subplot(212) # Error (target - prediction)
 
         # Set titles and axis labels for both graphs
-        self._graph_predict.set_title("Prediction vs. Target")
-        self._graph_predict.set_xlabel("Time")
-        self._graph_predict.set_ylabel("Power (kW)")
-        
-        self._graph_error.set_title("Error (Prediction minus Target)")
-        self._graph_error.set_xlabel("Time")
-        self._graph_error.set_ylabel("Error (kW)")
+        self.graph_predict.set_title("Prediction vs. Target")
+        self.graph_predict.set_xlabel("Time")
+        self.graph_predict.set_ylabel("Power (kW)")
+
+        self.graph_error.set_title("Error (Prediction minus Target)")
+        self.graph_error.set_xlabel("Time")
+        self.graph_error.set_ylabel("Error (kW)")
 
         plt.subplots_adjust(top = 0.87, hspace = 0.5)
-        plt.draw()       
 
         # Sets the x-axis to only show hours, minutes, and seconds of time
-        self._graph_predict.xaxis.set_major_formatter(DateFormatter("%H:%M:%S"))
-        self._graph_error.xaxis.set_major_formatter(DateFormatter("%H:%M:%S"))
+        self.graph_predict.xaxis.set_major_formatter(DateFormatter("%H:%M:%S"))
+        self.graph_error.xaxis.set_major_formatter(DateFormatter("%H:%M:%S"))
 
-        # Sets the x-axis to only show 6 tick marks        
-        self._graph_predict.xaxis.set_major_locator(LinearLocator(numticks=6))
-        self._graph_error.xaxis.set_major_locator(LinearLocator(numticks=6))
+        # Sets the x-axis to only show 6 tick marks
+        self.graph_predict.xaxis.set_major_locator(LinearLocator(numticks=6))
+        self.graph_error.xaxis.set_major_locator(LinearLocator(numticks=6))
 
-        # Add legend
-        predict_key = Line2D([], [], color='0.75', label='Prediction')
-        target_key = Line2D([], [], color='red', linestyle='--', label='Target')
-        error_key = Line2D([], [], color='red', label='Error')
+        # Add lines and legend
+        self.predict_line, = self.graph_predict.plot([], [], color='0.75', label='Prediction')
+        self.target_line, = self.graph_predict.plot([], [], color='red', linestyle='--', label='Target')
+        self.error_line, = self.graph_error.plot([], [], color='red', label='Error')
 
-        self._graph_predict.legend(handles=[target_key, predict_key])
-        self._graph_error.legend(handles=[error_key])
+        self.graph_predict.legend(handles=[self.target_line, self.predict_line])
+        self.graph_error.legend(handles=[self.error_line])
 
-        
+
     # Plot the data
-    def graph_data(self, y_time, y_target, y_predict):
+    def graph_data(self, y_predict, y_target, y_time):
 
-        # Calculate the difference vector
-        diff = []
+        # Calculate the error vector
+        y_error = []
         for i in xrange(len(y_target)):
-            diff.append(y_predict[i] - y_target[i])
-    
-        # Initialize lines
-        line1, line2 = self._graph_predict.plot(y_time, y_predict, '0.75',
-                                                y_time, y_target, 'r--')
-                                                
-        line3, = self._graph_error.plot(y_time, diff, 'r')
+            y_error.append(y_predict[i] - y_target[i])
 
         # Set x and y axis limits
-        # Axes update every time to reflect scope of data
+        # Axes update every time to achieve "scrolling" effect
         xmin = min(y_time)
         xmax = max(y_time)
 
         ymin = min(min(y_target), min(y_predict))
         ymax = max(max(y_target), max(y_predict))
-    
-        diffmin = min(diff)
-        diffmax = max(diff)
 
-        self._graph_predict.set_xlim(xmin, xmax)
-        self._graph_predict.set_ylim(ymin, ymax)
+        emin = min(y_error)
+        emax = max(y_error)
 
-        self._graph_error.set_xlim(xmin, xmax)
-        #self._graph_error.set_ylim(diffmin, diffmax)
-        self._graph_error.set_ylim(-3000, 3000)
-        
-        # Draw the plot
-        plt.draw()
+        self.graph_predict.set_xlim(xmin, xmax)
+        self.graph_predict.set_ylim(ymin, ymax)
+
+        self.graph_error.set_xlim(xmin, xmax)
+        self.graph_error.set_ylim(emin, emax)
+        self.graph_error.set_ylim(-30, 30)
+
+        # Set new data (automatically updates the graph
+        self.predict_line.set_data(y_time, y_predict)
+        self.target_line.set_data(y_time, y_target)
+        self.error_line.set_data(y_time, y_error)
 
 
-# Driver for graphing at any time (regardless of algorithm)
+# Driver for graphing at any time based on stored values
 def main():
 
     grapher = Grapher()
@@ -99,14 +94,14 @@ def main():
 
     while True:
 
-        goal_time += 10.0
+        goal_time += 5.0
 
         while True:
             try:
                 file = open("y_time.bak", "rb")
                 y_time = pickle.load(file)
                 file.close()
-            
+
                 file = open("y_target.bak", "rb")
                 y_target = pickle.load(file)
                 file.close()
@@ -124,16 +119,11 @@ def main():
         assert len(y_target) == len(y_time)
 
         print "Graphing at time", y_time[-1]
-        grapher.graph_data(y_time, y_target, y_predict)
+        grapher.graph_data(y_predict, y_target, y_time)
 
-        try:
+        # Catch error of sleeping for a negative time
+        if (goal_time > time.time()):
             plt.pause(goal_time - time.time())
-        except Exception:
-            print "Sleep time negative. Skipping sleep"
-
 
 if __name__ == "__main__":
     main()
-        
-        
-

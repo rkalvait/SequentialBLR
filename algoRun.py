@@ -259,10 +259,10 @@ while startTime < endTime:
         if(initTraining or runnable(X_data[:][:numFeatures]) > 0.5):
 
             # Uncomment for BLR train
-            w_opt, a_opt, b_opt, S_N = train(X_data, y_data)
+            #w_opt, a_opt, b_opt, S_N = train(X_data, y_data)
 
             # Uncomment for TF train            
-            #w_opt, a_opt, b_opt, S_N = tf_train(X_data, y_data)
+            w_opt, a_opt, b_opt, S_N = tf_train(X_data, y_data)
             
             initTraining = True     # From now on, always train and make predictions
 
@@ -273,14 +273,15 @@ while startTime < endTime:
                 print "Data not runnable too many times! Exiting..."
 
     # Make prediction:
-    if(initTraining):
+    if initTraining:
 
         # Prediction is dot product of X_test and w_opt
-        x_test = X_data[rowNumber][:len(columns)]
+        x_test = X_data[rowNumber][:]
         prediction = max(0, np.inner(w_opt,x_test))
 
         #debug
-        if prediction > 1e6:
+        if prediction > 11000:
+            '''
             print "WARNING!!!!"
             print X_data
             print y_data
@@ -288,6 +289,10 @@ while startTime < endTime:
             print x_test
             print w_opt
             raw_input("press enter")
+            '''
+            print "!!!!!WARNING!!!!! Large prediction, ignoring!"
+            prediction = y_predictions[-1]
+            
             
         y_predictions.append(prediction)
         y_target.append(y_data[rowNumber])
