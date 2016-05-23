@@ -196,7 +196,7 @@ while True:
             print (dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
                    + " " + str(target) + " " + str(prediction))
 
-        #not currently used but will be necessary to flag user:
+        #eot currently used but will be necessary to flag user:
         error = (prediction-target)
         sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
 
@@ -228,7 +228,7 @@ while True:
     row_count += 1
 
     # If just trained, write results for graphing
-    if(rowCount % trainingInterval == 0 and initTraining):
+    if(row_count % forecasting_interval == 0 and init_training):
         
         # Write the pickled data for graphing
         file = open("y_time.bak", "wb")
