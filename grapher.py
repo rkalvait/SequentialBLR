@@ -83,7 +83,7 @@ class Grapher:
 
         self._graph_error.set_xlim(xmin, xmax)
         #self._graph_error.set_ylim(diffmin, diffmax)
-        self._graph_error.set_ylim(-3000, 3000)
+        self._graph_error.set_ylim(-30, 30)
         
         # Draw the plot
         plt.draw()
@@ -126,14 +126,13 @@ def main():
         print "Graphing at time", y_time[-1]
         grapher.graph_data(y_time, y_target, y_predict)
 
-        try:
-            plt.pause(goal_time - time.time())
-        except Exception:
-            print "Sleep time negative. Skipping sleep"
-
+        # Catch error of sleeping for a negative time
+        if (goal_time > time.time()):
+            print goal_time
+            print time.time()
+            plt.pause(goal_time - time.time())            
 
 if __name__ == "__main__":
     main()
         
         
-
