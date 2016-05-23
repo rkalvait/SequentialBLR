@@ -74,9 +74,18 @@ class Grapher:
         self.graph_predict.set_xlim(xmin, xmax)
         self.graph_predict.set_ylim(ymin, ymax)
 
+<<<<<<< HEAD
         self.graph_error.set_xlim(xmin, xmax)
         self.graph_error.set_ylim(emin, emax)
         self.graph_error.set_ylim(-30, 30)
+=======
+        self._graph_error.set_xlim(xmin, xmax)
+        #self._graph_error.set_ylim(diffmin, diffmax)
+        self._graph_error.set_ylim(-30, 30)
+        
+        # Draw the plot
+        plt.draw()
+>>>>>>> 8e0f40d93da53394eb3cd2051b99e6be10ea6f37
 
         # Set new data (automatically updates the graph
         self.predict_line.set_data(y_time, y_predict)
@@ -123,7 +132,18 @@ def main():
 
         # Catch error of sleeping for a negative time
         if (goal_time > time.time()):
+<<<<<<< HEAD
             plt.pause(goal_time - time.time())
 
 if __name__ == "__main__":
     main()
+=======
+            print goal_time
+            print time.time()
+            plt.pause(goal_time - time.time())            
+
+if __name__ == "__main__":
+    main()
+        
+        
+>>>>>>> 8e0f40d93da53394eb3cd2051b99e6be10ea6f37
