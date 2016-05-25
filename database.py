@@ -3,6 +3,7 @@
 # Start Date:   5/25/2016
 
 import mysql.connector
+import datetime as dt
 
 class Database:
 
@@ -35,21 +36,21 @@ class Database:
 
         print "Connecting to database..."        
         self.cnx = mysql.connector.connect(**config)
-        self.cursor = cnx.cursor()
+        self.cursor = self.cnx.cursor()
 
     # Execute an arbitrary SQL command
     def execute(self, command):
-        cursor.execute(command)
+        self.cursor.execute(command)
 
         # "line" contains the list of data
-        for line in cursor:
+        for line in self.cursor:
             return line         
         
 
     # Return a list of the data averaged over the specified period
     # features is the list of features to query for
     # start_time and end_time must be datetime objects of the same type
-    def get_avg_data(self, start_time, end_time, features):
+    def get_avg_data(self, start_time, end_time, feature_list):
         
         if (start_time > end_time):
             raise ValueError("end_time must come after start_time")
@@ -57,24 +58,24 @@ class Database:
         #Build the query:
         isFirst = True
         qry = "SELECT "
-        for f in features:
-            if isFirst == 0:
+        for feature in feature_list:
+            if not isFirst:
                 qry += ", "
             else:
                 isFirst = False
 
-            if "motion" in column:
-                qry = qry + "SUM(" + column + ")"
+            if "motion" in feature:
+                qry = qry + "SUM(" + feature + ")"
             else:
-                qry = qry + "AVG(" + column + ")"
+                qry = qry + "AVG(" + feature + ")"
 
         qry = qry + " FROM SMART WHERE dataTime BETWEEN %s AND %s"
 
         #Execute the query:
-        cursor.execute(qry , (startTime, startTime + dt.timedelta(0,granularityInSeconds)))
+        self.cursor.execute(qry , (start_time, end_time))
 
         # "line" contains the list of data
-        for line in cursor:
+        for line in self.cursor:
             return line
         
         

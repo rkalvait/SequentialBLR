@@ -84,6 +84,27 @@ class Grapher:
         self.error_line.set_data(y_time, y_error)
 
 
+    # Store the given data in pickle files
+    # Can be used to graph in another instance of Grapher
+    def pickle(self, y_target, y_predict, y_time):
+        
+        # Write the pickled data for graphing
+        file = open("y_target.bak", "wb")
+        pickle.dump(y_target, file)
+        file.close()
+
+        file = open("y_predict.bak", "wb")
+        pickle.dump(y_predict, file)
+        file.close()
+
+        file = open("y_time.bak", "wb")
+        pickle.dump(y_time, file)
+        file.close()
+        
+        #nf_command = "rsync -arvz y_time.bak y_target.bak y_predict.bak blueberry:"
+        #p = subprocess.Popen(nf_command, bufsize=-1, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+
 # Driver for graphing at any time based on stored values
 def main():
 

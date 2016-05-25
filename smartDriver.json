@@ -202,7 +202,7 @@
     },
     {
      "idNumber" : "33",
-     "startTime":"2012-04-30 05:20:0",
+     "startTime":"2012-04-30 05:20:00",
      "endTime": "2012-07-31 05:15:00",
      "columnName": "environmentWindChill"
     },
