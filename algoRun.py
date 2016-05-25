@@ -13,8 +13,9 @@ print "Preparing libraries..."
 import time
 import datetime as dt
 import random
-import pickle
-import subprocess
+
+import grapher
+from database import Database
 
 import json
 from urllib import urlopen
@@ -50,39 +51,15 @@ w_opt = []
 a_opt = 0
 b_opt = 0
 rowCount = 0
-initTraining = 0
+initTraining = False
 notRunnableCount = 0
 mu = 0; sigma = 1000
 w, L = (.84, 3.719) # EWMA parameters. Other pairs can also be used, see paper
 Sn_1 = 0
 p_array = []
 
-with open('config.txt') as f:
-    for line in f:
-        if line.startswith('HOST'):
-            loc = line.find('=')
-            hst = line[loc+1:].rstrip()
-        elif line.startswith('DATABASE'):
-            loc = line.find('=')
-            db = line[loc+1:].rstrip()
-        elif line.startswith('USER'):
-            loc = line.find('=')
-            usr = line[loc+1:].rstrip()
-        elif line.startswith('PASSWORD'):
-            loc = line.find('=')
-            pswd = line[loc+1:].rstrip()
-
-config = {
-    'user': usr,
-    'password': pswd,
-    'host': hst,
-    'database': db,
-    'raise_on_warnings': True
-}
-
-print "Connecting to database..."
-cnx = mysql.connector.connect(**config)
-cursor = cnx.cursor()
+# Initialize database
+database = Database()
 
 print "Reading configuration files..."
 with open('smartDriver.json') as data_file:
@@ -158,13 +135,15 @@ granularityInSeconds = int(jsonDataFile["granularity"])*60
 X =  np.zeros([matrixLength, len(columns)], np.float32)
 y = [None]*matrixLength
 
+################################################################################
+
 print "Beginning analysis..."
 
 while startTime < endTime:
 
     currentRow = rowCount % matrixLength
 
-    # Time to train:
+    # Train if we have collected enough data
     if(rowCount % forecastingInterval == 0 and rowCount >= matrixLength):
 
         data = X[:, :len(columns)-1]
@@ -177,7 +156,7 @@ while startTime < endTime:
 
             # For TF train            
             w_opt, a_opt, b_opt, S_N = tf_train(data, y)
-            initTraining = 1
+            initTraining = True
 
         else:
             notRunnableCount += 1
@@ -185,7 +164,6 @@ while startTime < endTime:
                 print "Data not runnable too many times! Exiting..."
 
     
-
     #Some of the data seems bad on the 31st - too many NULLS
     if startTime > dt.datetime(2012, 5, 30) and startTime < dt.datetime(2012, 6, 1):
         startTime = dt.datetime(2012, 6, 1)
@@ -193,43 +171,23 @@ while startTime < endTime:
     if(rowCount % 240 == 0):
         print "trying time: %s " % startTime
 
-    #Build the query:
-    isFirst = 1
-    qry = "SELECT "
-    for column in columns:
-        if isFirst == 0:
-            qry += ", "
-        else:
-            isFirst = 0
-
-        if "motion" in column:
-            qry = qry + "SUM(" + column + ")"
-        else:
-            qry = qry + "AVG(" + column + ")"
-
-    qry = qry + " FROM SMART WHERE dataTime BETWEEN %s AND %s"
-
-    #Execute the query:
-    cursor.execute(qry , (startTime, startTime + dt.timedelta(0,granularityInSeconds)))
-
-    #Update X,y
-
-    for line in cursor:
-        for i in range(0, len(columns)):
-        
-            #We have new valid data! Also update lastData
-            if line[i] > 0:
-                X[currentRow, i] = line[i]
-                lastData[i] = line[i]
-                lastDataTime[i] = startTime
-
-            #No new data.
-            else:
-                #X[currentRow, i] = lastData[i]
-                X[currentRow, i] = 0
-                countNoData[i] += 1
+    # Query for new data
+    line = database.get_avg_data(startTime, startTime + dt.timedelta(0,granularityInSeconds), columns)
     
+    for i in range(0, len(columns)):
+       
+        #We have new valid data! Also update lastData
+        if line[i] > 0:
+            X[currentRow, i] = line[i]
+            lastData[i] = line[i]
+            lastDataTime[i] = startTime
 
+        #No new data.
+        else:
+            #X[currentRow, i] = lastData[i]
+            X[currentRow, i] = 0
+            countNoData[i] += 1
+    
     # Make prediction:
     if initTraining:
 
@@ -261,28 +219,13 @@ while startTime < endTime:
     else:
         severityArray.append(0)
 
-
     #Increment and loop
     startTime += dt.timedelta(0,granularityInSeconds)
     rowCount += 1
 
-    if(rowCount % forecastingInterval == 0 and initTraining):
-        
-        # Write the pickled data for graphing
-        file = open("y_time.bak", "wb")
-        pickle.dump(y_time, file)
-        file.close()
-        
-        file = open("y_target.bak", "wb")
-        pickle.dump(y_target, file)
-        file.close()
-
-        file = open("y_predict.bak", "wb")
-        pickle.dump(y_predictions, file)
-        file.close()
-
-        #nf_command = "rsync -arvz y_time.bak y_target.bak y_predict.bak blueberry:"
-        #p = subprocess.Popen(nf_command, bufsize=-1, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    # Pickle the data for later graphing
+    if(rowCount % forecastingInterval == 0 and initTraining):        
+        grapher.pickle_data(y_target, y_predictions, y_time)
 
 
 ################################################################################

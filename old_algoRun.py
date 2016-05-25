@@ -21,6 +21,7 @@ import subprocess
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import grapher
 
 print "Starting program..."
 
@@ -256,23 +257,9 @@ while startTime < endTime:
     startTime += dt.timedelta(0,granularityInSeconds)
     rowCount += 1
 
-    if(rowCount % forecastingInterval == 0 and initTraining):
-        
-        # Write the pickled data for graphing
-        file = open("y_time.bak", "wb")
-        pickle.dump(y_time, file)
-        file.close()
-        
-        file = open("y_target.bak", "wb")
-        pickle.dump(y_target, file)
-        file.close()
-
-        file = open("y_predict.bak", "wb")
-        pickle.dump(y_predictions, file)
-        file.close()
-
-        nf_command = "rsync -arvz y_time.bak y_target.bak y_predict.bak blueberry:"
-        p = subprocess.Popen(nf_command, bufsize=-1, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    # Pickle the data for later graphing
+    if(rowCount % forecastingInterval == 0 and initTraining):        
+        grapher.pickle_data(y_target, y_predictions, y_time)
 
 
 print "Analysis complete."

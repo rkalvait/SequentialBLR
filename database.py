@@ -50,7 +50,7 @@ class Database:
     # Return a list of the data averaged over the specified period
     # features is the list of features to query for
     # start_time and end_time must be datetime objects of the same type
-    def get_avg_data(self, start_time, end_time, feature_list):
+    def get_avg_data(self, start_time, end_time, features):
         
         if (start_time > end_time):
             raise ValueError("end_time must come after start_time")
@@ -58,7 +58,7 @@ class Database:
         #Build the query:
         isFirst = True
         qry = "SELECT "
-        for feature in feature_list:
+        for feature in features:
             if not isFirst:
                 qry += ", "
             else:
