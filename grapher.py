@@ -9,6 +9,8 @@ from matplotlib.ticker import LinearLocator
 from matplotlib.lines import Line2D
 import pickle
 import time
+import datetime as dt
+import argparse
 
 class Grapher:
 
@@ -55,6 +57,10 @@ class Grapher:
     # Plot the data
     def graph_data(self, y_target, y_predict, y_time):
 
+        # First check if y_time is datetime or UNIX timestamps
+        if not isinstance(y_time[0], dt.datetime):
+            y_time = [dt.datetime.fromtimestamp(t) for t in y_time]
+       
         # Calculate the error vector
         y_error = []
         for i in xrange(len(y_target)):
@@ -108,14 +114,26 @@ def pickle_data(y_target, y_predict, y_time):
 # Driver for graphing at any time based on stored values
 def main():
 
+    # Create grapher instance for graphing data
     grapher = Grapher()
+
+    # Check if the user specified continuous or one-time
+    parser = argparse.ArgumentParser(description='Options for grapher')
+    parser.add_argument('-c', '--continuous', help='graph data continuously instead of just once')
+
+    try:
+        period = float(parser.parse_args().continuous)
+    except:
+        period = 0.0
+    
+    print "Period:", period
 
     goal_time = float(int(time.time() + 1.0))
     time.sleep(goal_time-time.time())
 
     while True:
 
-        goal_time += 5.0
+        goal_time += period
 
         while True:
             try:
@@ -140,7 +158,11 @@ def main():
         assert len(y_target) == len(y_time)
 
         print "Graphing at time", y_time[-1]
-        grapher.graph_data(y_predict, y_target, y_time)
+        grapher.graph_data(y_target, y_predict, y_time)
+        
+        if period == 0.0:
+            raw_input("Hit enter to close graph")
+            break
 
         # Catch error of sleeping for a negative time
         if (goal_time > time.time()):
