@@ -89,21 +89,6 @@
                 }
         },
       
-        "12.1":
-        {
-                "name": "Temp_12",
-                "data":
-                {
-                        "Degree (C)": {
-                                "data_num": "1",
-                                "instance_num": "0",
-                                "command_class": "49",
-                                "url_suffix": ".val.value",
-                                "type": "double"
-                        }
-                }
-        },
-
         "3":
         {
                 "name": "Power (Watts)",
@@ -119,6 +104,22 @@
                 }
         },
 
+        "12.1":
+        {
+                "name": "Temp_12",
+                "data":
+                {
+                        "Degree (C)": {
+                                "data_num": "1",
+                                "instance_num": "0",
+                                "command_class": "49",
+                                "url_suffix": ".val.value",
+                                "type": "double"
+                        }
+                }
+        },
+
+
        "12.2":
         {
                 "name": "Lum_12",
@@ -132,11 +133,39 @@
                                 "type": "double"
                         }
                 }
+        },
+
+
+       "11.2":
+        {
+                "name": "Lum_11",
+                "data":
+                {
+                        "LUX": {
+                                "data_num": "3",
+                                "instance_num": "0",
+                                "command_class": "49",
+                                "url_suffix": ".val.value",
+                                "type": "double"
+                        }
+                }
+        },
+
+
+       "10.2":
+        {
+                "name": "Lum_10",
+                "data":
+                {
+                        "LUX": {
+                                "data_num": "3",
+                                "instance_num": "0",
+                                "command_class": "49",
+                                "url_suffix": ".val.value",
+                                "type": "double"
+                        }
+                }
         }
-
-
-
-
 
 
 }

@@ -41,7 +41,7 @@ import grapher
 from algoRunFunctions import train, severityMetric
 from get_data import get_data, get_power
 from zwave_api import ZWave
-
+import pickle 
 
 ############################################################
 
@@ -50,7 +50,7 @@ from zwave_api import ZWave
 print "Loading configuration settings..."
 
 ##### PARAMETERS #####
-XLOG_FILENAME = "X_data.bak"
+XLOG_FILENAME = "X_DATA.bak"
 SECS_PER_MIN = 60
 MINS_PER_HOUR = 60
 HOURS_PER_DAT = 24
