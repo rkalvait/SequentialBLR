@@ -9,6 +9,7 @@ from matplotlib.ticker import LinearLocator
 from matplotlib.lines import Line2D
 import pickle
 import time
+import datetime as dt
 import argparse
 
 class Grapher:
