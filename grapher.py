@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 # Grapher class for plotting target and prediction values
 # Filename:     grapher.py
 # Author(s):    apadin
@@ -61,7 +63,6 @@ class Grapher:
 
         # First check if y_time is datetime or UNIX timestamps
         if isinstance(y_time[0], str):
-            print y_time[0]
             y_time = [dt.datetime.strptime(t, "%Y-%m-%d %H:%M:%S\n") for t in y_time]
         elif isinstance(y_time[0], float):
             y_time = [dt.datetime.fromtimestamp(t) for t in y_time]
@@ -173,7 +174,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        period = float(args.continuous)
+        period = float(args.realtime)
     except:
         period = 0.0
 
@@ -203,12 +204,13 @@ def main():
 
         # If not continuous, stop here
         if period == 0.0:
-            raw_input("Hit enter to close graph")
+            plt.show(block=True)
             break
 
         # Catch error of sleeping for a negative time
-        if (goal_time > time.time()):
-            plt.pause(goal_time - time.time())
+        sleep_time = goal_time - time.time()
+        if (sleep_time > 0):
+            plt.pause(sleep_time)
 
 if __name__ == "__main__":
     main()

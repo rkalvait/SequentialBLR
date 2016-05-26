@@ -37,7 +37,7 @@ import json
 import logging
 import time
 import numpy as np
-import pickle
+import grapher
 from algoRunFunctions import train, severityMetric
 from get_data import get_data, get_power
 from zwave_api import ZWave
@@ -244,18 +244,7 @@ while True:
     # If trained, write results for graphing
     if(init_training):
         
-        # Write the pickled data for graphing
-        file = open("y_time.bak", "wb")
-        pickle.dump(y_time, file)
-        file.close()
-        
-        file = open("y_target.bak", "wb")
-        pickle.dump(y_target, file)
-        file.close()
-
-        file = open("y_predict.bak", "wb")
-        pickle.dump(y_predict, file)
-        file.close()
+        grapher.write_csv(y_target, y_predict, y_time)
     
     # Sleeping approximation (takes approx. 0.01 seconds to run)
     try:

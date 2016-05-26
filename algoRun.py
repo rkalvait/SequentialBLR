@@ -193,7 +193,7 @@ while startTime < endTime:
 
         # Prediction is dot product of x_n and weight matrix
         x_n = X[currentRow, :-1]
-        prediction = max(0, np.inner(w_opt,x_n))
+        prediction = max(0.0, np.inner(w_opt,x_n)[0])
 
         y_predictions.append(prediction)
         y_target.append(X[currentRow, -1])
@@ -224,8 +224,8 @@ while startTime < endTime:
     rowCount += 1
 
     # Pickle the data for later graphing
-    if(rowCount % forecastingInterval == 0 and initTraining):        
-        grapher.pickle_data(y_target, y_predictions, y_time)
+    if(rowCount % forecastingInterval == 0 and initTraining):
+        grapher.write_csv(y_target, y_predictions, y_time)
 
 
 ################################################################################
