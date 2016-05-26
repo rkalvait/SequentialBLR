@@ -9,8 +9,10 @@ from matplotlib.ticker import LinearLocator
 from matplotlib.lines import Line2D
 import pickle
 import time
-import datetime as dt
 import argparse
+import datetime as dt
+
+################### GRAPHER CLASS ###################
 
 class Grapher:
 
@@ -38,8 +40,8 @@ class Grapher:
         plt.subplots_adjust(top = 0.87, hspace = 0.5)
 
         # Sets the x-axis to only show hours, minutes, and seconds of time
-        self.graph_predict.xaxis.set_major_formatter(DateFormatter("%H:%M:%S"))
-        self.graph_error.xaxis.set_major_formatter(DateFormatter("%H:%M:%S"))
+        self.graph_predict.xaxis.set_major_formatter(DateFormatter("%m-%d %H:%M:%S"))
+        self.graph_error.xaxis.set_major_formatter(DateFormatter("%m-%d %H:%M:%S"))
 
         # Sets the x-axis to only show 6 tick marks
         self.graph_predict.xaxis.set_major_locator(LinearLocator(numticks=6))
@@ -58,9 +60,12 @@ class Grapher:
     def graph_data(self, y_target, y_predict, y_time):
 
         # First check if y_time is datetime or UNIX timestamps
-        if not isinstance(y_time[0], dt.datetime):
+        if isinstance(y_time[0], str):
+            print y_time[0]
+            y_time = [dt.datetime.strptime(t, "%Y-%m-%d %H:%M:%S\n") for t in y_time]
+        elif isinstance(y_time[0], float):
             y_time = [dt.datetime.fromtimestamp(t) for t in y_time]
-       
+
         # Calculate the error vector
         y_error = []
         for i in xrange(len(y_target)):
@@ -90,11 +95,11 @@ class Grapher:
         self.error_line.set_data(y_time, y_error)
 
 
+################### READ/WRITE FUNCTIONS ###################
+
 # Store the given data in pickle files
-# Can be used to graph in another instance of Grapher
-def pickle_data(y_target, y_predict, y_time):
-        
-    # Write the pickled data for graphing
+def write_pickle(y_target, y_predict, y_time):
+
     file = open("y_target.bak", "wb")
     pickle.dump(y_target, file)
     file.close()
@@ -106,28 +111,76 @@ def pickle_data(y_target, y_predict, y_time):
     file = open("y_time.bak", "wb")
     pickle.dump(y_time, file)
     file.close()
+
+
+# Store the given data in a CSV (comma-separated values) file
+def write_csv(y_target, y_predict, y_time):
+
+    file = open("results.csv", "wb")
     
-    #nf_command = "rsync -arvz y_time.bak y_target.bak y_predict.bak blueberry:"
-    #p = subprocess.Popen(nf_command, bufsize=-1, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    # Write a header first
+    file.write('Target, Prediction, Time\n')
+    for i in xrange(len(y_target)):
+        file.write(str(y_target[i]) + ',' + str(y_predict[i]) + ',' + str(y_time[i]) + '\n')
+        
+    file.close()
+
+
+# Read the given data in pickle files
+def read_pickle():
+
+    file = open("y_target.bak", "rb")
+    y_target = pickle.load(file)
+    file.close()
+
+    file = open("y_predict.bak", "rb")
+    y_predict = pickle.load(file)
+    file.close()
+
+    file = open("y_time.bak", "rb")
+    y_time = pickle.load(file)
+    file.close()
+    
+    return y_target, y_predict, y_time
+
+# Read the given data in a CSV (comma-separated values) file
+def read_csv():
+
+    file = open("results.csv", "rb")
+
+    file.next() # Throw out the header row
+    
+    y_target, y_predict, y_time = [], [], []
+
+    for line in file:
+        data = line.split(',')
+        y_target.append(float(data[0]))
+        y_predict.append(float(data[1]))
+        y_time.append(data[2])
+    
+    file.close()
+    
+    return y_target, y_predict, y_time
 
 
 # Driver for graphing at any time based on stored values
 def main():
 
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Graph data from a file using matplotlib tools')
+    parser.add_argument('-r', '--realtime', metavar = 'TIME', help='graph data in real-time, updating every TIME seconds')
+    parser.add_argument('-p', '--pickle', action='store_true', help='read data from a pickle file')
+    args = parser.parse_args()
+
+    try:
+        period = float(args.continuous)
+    except:
+        period = 0.0
+
     # Create grapher instance for graphing data
     grapher = Grapher()
 
-    # Check if the user specified continuous or one-time
-    parser = argparse.ArgumentParser(description='Options for grapher')
-    parser.add_argument('-c', '--continuous', help='graph data continuously instead of just once')
-
-    try:
-        period = float(parser.parse_args().continuous)
-    except:
-        period = 0.0
-    
-    print "Period:", period
-
+    # Allign the timer
     goal_time = float(int(time.time() + 1.0))
     time.sleep(goal_time-time.time())
 
@@ -135,31 +188,20 @@ def main():
 
         goal_time += period
 
-        while True:
-            try:
-                file = open("y_target.bak", "rb")
-                y_target = pickle.load(file)
-                file.close()
+        # Attempt to read the files
+        if args.pickle:
+            y_target, y_predict, y_time = read_pickle()
+        else:
+            y_target, y_predict, y_time = read_csv()
 
-                file = open("y_predict.bak", "rb")
-                y_predict = pickle.load(file)
-                file.close()
-
-                file = open("y_time.bak", "rb")
-                y_time = pickle.load(file)
-                file.close()
-
-                break
-
-            except Exception:
-                print ("File in use. Trying again.")
-
+        # Make sure the files were written properly and are the same length
         assert len(y_target) == len(y_predict)
         assert len(y_target) == len(y_time)
 
         print "Graphing at time", y_time[-1]
         grapher.graph_data(y_target, y_predict, y_time)
-        
+
+        # If not continuous, stop here
         if period == 0.0:
             raw_input("Hit enter to close graph")
             break
