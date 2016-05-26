@@ -139,6 +139,10 @@ row_count = 0
 goal_time = float(int(time.time() + 1.0))
 time.sleep(goal_time-time.time())
 
+y_time = []
+y_target = []
+y_predict = []
+
 while True:
 
     # Record the time of the next iteration
@@ -170,7 +174,7 @@ while True:
 
     # Time to train:
     if (row_count % forecasting_interval == 0
-            and row_count >= matrix_length):
+            and (row_count >= matrix_length or init_training)):
         #unwrap the matrices
         data = X[(row_count % matrix_length):,:num_sensors]
         data = np.concatenate((data, X[0:(row_count % matrix_length), :num_sensors]), axis=0)
@@ -185,7 +189,8 @@ while True:
     if init_training:
         x_n = X[(row_count) % matrix_length][:num_sensors]
         print "w_opt, x_n",w_opt,x_n
-        prediction = max(0, np.inner(w_opt,x_n))
+        actual_prediction = np.inner(w_opt, x_n)
+	prediction = max(0, actual_prediction)
         target = X[(row_count) % matrix_length][num_sensors]
 
         #log the new result
@@ -199,6 +204,15 @@ while True:
         #eot currently used but will be necessary to flag user:
         error = (prediction-target)
         sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
+
+	y_target.append(target)
+	y_predict.append(prediction)
+	y_time.append(goal_time)
+	
+	print "Time:", dt.datetime.fromtimestamp(goal_time).strftime('%Y-%m-%d %H:%M:%S')
+	print "Target:", target, 
+	print "Prediction:", prediction
+	print "Actual Predict:", actual_prediction
 
         # Catching pathogenic cases where variance (ie, sigma)
         # gets really really small
@@ -227,8 +241,8 @@ while True:
 
     row_count += 1
 
-    # If just trained, write results for graphing
-    if(row_count % forecasting_interval == 0 and init_training):
+    # If trained, write results for graphing
+    if(init_training):
         
         # Write the pickled data for graphing
         file = open("y_time.bak", "wb")
@@ -240,7 +254,7 @@ while True:
         file.close()
 
         file = open("y_predict.bak", "wb")
-        pickle.dump(y_predictions, file)
+        pickle.dump(y_predict, file)
         file.close()
     
     # Sleeping approximation (takes approx. 0.01 seconds to run)
