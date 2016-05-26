@@ -57,7 +57,7 @@ def train(X, y):
         k += 1
         try:
 
-            S_N = np.linalg.inv(alpha*np.eye(M) + beta*PhiT_Phi)
+            S_N = np.linalg.pinv(alpha*np.eye(M) + beta*PhiT_Phi)
         except np.linalg.LinAlgError as err:
             print  "******************************************************************************************************"
             print "                           ALERT: LinearAlgebra Error detected!"
@@ -77,7 +77,7 @@ def train(X, y):
         beta = 1/one_over_beta
         ab_new = np.array([alpha, beta])
 
-    S_N = np.linalg.inv(alpha*np.eye(M) + beta*PhiT_Phi)
+    S_N = np.linalg.pinv(alpha*np.eye(M) + beta*PhiT_Phi)
     m_N = beta * np.dot(S_N, np.dot(np.transpose(Phi), t))
     w_opt = m_N
 

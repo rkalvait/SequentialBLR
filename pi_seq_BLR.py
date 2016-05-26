@@ -147,8 +147,8 @@ while True:
 
     # Record the time of the next iteration
     goal_time += granularity_in_seconds
-    if __debug__:
-        print "Trying time", dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    #if __debug__:
+    print "\nTrying time", dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 
     if (not row_count % 200) and __debug__:
         print "Row count: %s" % row_count

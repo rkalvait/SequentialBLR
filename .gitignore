@@ -6,5 +6,4 @@ figures*/*
 algoRun
 tensorflow
 *test*
-*.bak
 !X_data.bak

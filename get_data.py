@@ -79,7 +79,7 @@ def get_power(config_info):
         # this is where the value are, index the row returned
         # like row[0] for first data column, row[1] for second
         # data column, etc.
-       final_power = row[0] + row[1] + 4.068189 #offset shark_1 to zero
-       print "Shark_2, Shark_1, Final Power", row[0], row[1] + 4.068189, final_power
+       final_power = abs(row[0]) + abs(row[1]) # + 4.068189 #offset shark_1 to zero
+       print "Shark_2, Shark_1, Final Power", row[0], row[1], final_power
     cnx.close()
     return final_power
