@@ -31,7 +31,7 @@ y_time = []
 w_opt = []
 a_opt = 0
 b_opt = 0
-rowCount = 1
+rowCount = 0
 initTraining = 0
 notRunnableCount = 0
 mu = 0; sigma = 1000
@@ -143,6 +143,8 @@ y = [None]*matrixLength
 
 print "Beginning analysis..."
 
+grapher.clear_csv()
+
 while startTime < endTime:
 
     #Some of the data seems bad on the 31st - too many NULLS
@@ -166,7 +168,7 @@ while startTime < endTime:
 
     #Execute the query:
     cursor.execute(qry , (startTime, startTime + dt.timedelta(0,granularityInSeconds)))
-
+    
     #Get the average in the queried window:
     #TODO: should probably switch this to be done by qry
     colSum = np.zeros(len(columns))
@@ -212,12 +214,12 @@ while startTime < endTime:
             #time += Xt[:(rowCount % matrixLength)]
 
             # For BLR train
-            w_opt, a_opt, b_opt, S_N = train(data, y)
+            #w_opt, a_opt, b_opt, S_N = train(data, y)
 
             # For TF train            
-            #w_opt, a_opt, b_opt, S_N = tf_train(data, y)
+            w_opt, a_opt, b_opt, S_N = tf_train(data, y)
 
-            print w_opt
+            #print w_opt
 
             initTraining = 1
 
@@ -233,7 +235,7 @@ while startTime < endTime:
     if(initTraining):
         x_n = X[(rowCount-1) % matrixLength][:len(columns)-1]
         #y_time.append(Xt[(rowCount-1) % matrixLength])
-        prediction = max(0, np.inner(w_opt,x_n))
+        prediction = max(0, np.inner(w_opt,x_n)[0])
 
         y_predictions.append(prediction)
         y_target.append(X[(rowCount-1) % matrixLength][len(columns)-1])
@@ -262,7 +264,9 @@ while startTime < endTime:
 
     # Pickle the data for later graphing
     if(rowCount % forecastingInterval == 0 and initTraining):        
-        grapher.write_csv(y_target, y_predictions, y_time)
+        grapher.write_csv(y_target[-forecastingInterval:],
+                          y_predictions[-forecastingInterval:],
+                          y_time[-forecastingInterval:])
 
 
 print "Analysis complete."

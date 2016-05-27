@@ -135,35 +135,16 @@ granularityInSeconds = int(jsonDataFile["granularity"])*60
 X =  np.zeros([matrixLength, len(columns)], np.float32)
 y = [None]*matrixLength
 
+grapher.clear_csv()
+
 ################################################################################
 
 print "Beginning analysis..."
 
 while startTime < endTime:
 
-    currentRow = rowCount % matrixLength
+    currentRow = (rowCount % matrixLength)
 
-    # Train if we have collected enough data
-    if(rowCount % forecastingInterval == 0 and rowCount >= matrixLength):
-
-        data = X[:, :len(columns)-1]
-        y = X[:, len(columns)-1]
-
-        if(initTraining or runnable(data) > 0.5):
-
-            # For BLR train
-            #w_opt, a_opt, b_opt, S_N = train(data, y)
-
-            # For TF train            
-            w_opt, a_opt, b_opt, S_N = tf_train(data, y)
-            initTraining = True
-
-        else:
-            notRunnableCount += 1
-            if(notRunnableCount > 5):
-                print "Data not runnable too many times! Exiting..."
-
-    
     #Some of the data seems bad on the 31st - too many NULLS
     if startTime > dt.datetime(2012, 5, 30) and startTime < dt.datetime(2012, 6, 1):
         startTime = dt.datetime(2012, 6, 1)
@@ -171,40 +152,48 @@ while startTime < endTime:
     if(rowCount % 240 == 0):
         print "trying time: %s " % startTime
 
-    # Query for new data
-    line = database.get_avg_data(startTime, startTime + dt.timedelta(0,granularityInSeconds), columns)
-    
-    for i in range(0, len(columns)):
-       
-        #We have new valid data! Also update lastData
-        if line[i] > 0:
-            X[currentRow, i] = line[i]
-            lastData[i] = line[i]
-            lastDataTime[i] = startTime
+    #Execute the query:
+    line = database.get_avg_data(startTime, startTime + dt.timedelta(0, granularityInSeconds), columns)
+    X[currentRow] = [max(0, i) for i in line] # remove 'nan' and negative
 
-        #No new data.
+    # Time to train:
+    if(rowCount % forecastingInterval == 0 and rowCount >= matrixLength):
+        data = X[(currentRow+1):, :-1]
+        data = np.concatenate((data, X[:(currentRow+1), :-1]), axis=0)
+        y = X[(currentRow+1):, -1]
+        y = np.concatenate((y, X[:(currentRow+1), -1]), axis=0)
+
+        if(initTraining or runnable(data) > 0.5):
+
+            # For BLR train
+            w_opt, a_opt, b_opt, S_N = train(data, y)
+
+            # For TF train            
+            #w_opt, a_opt, b_opt, S_N = tf_train(data, y)
+
+            #print w_opt
+
+            initTraining = 1
+
         else:
-            #X[currentRow, i] = lastData[i]
-            X[currentRow, i] = 0
-            countNoData[i] += 1
-    
-    # Make prediction:
-    if initTraining:
+            notRunnableCount += 1
+            if(notRunnableCount > 5):
+                print "Data not runnable too many times! Exiting..."
 
-        # Prediction is dot product of x_n and weight matrix
+    # If enough data has been gathered, make a prediction
+    if(initTraining):
         x_n = X[currentRow, :-1]
-        prediction = max(0.0, np.inner(w_opt,x_n)[0])
+        prediction = max(0, np.inner(w_opt,x_n))
 
         y_predictions.append(prediction)
         y_target.append(X[currentRow, -1])
         y_time.append(startTime)
-        
-        error = y_predictions[-1] - y_target[-1]
+
+        error = y_predictions[-1]-y_target[-1]
         sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
 
         # Catching pathogenic cases where variance (ie, sigma) gets too small
-        if sigma < 1:
-            sigma = 1
+        sigma = max(sigma, 1.0)
 
         # Update severity metric
         mu = mu; sigma = sigma
@@ -215,7 +204,7 @@ while startTime < endTime:
         p = 1 - sp.stats.norm.cdf(error, mu, sigma)
         p_array.append(p)
 
-    # No prediction made
+    # If not, no prediction is made
     else:
         severityArray.append(0)
 
@@ -223,114 +212,15 @@ while startTime < endTime:
     startTime += dt.timedelta(0,granularityInSeconds)
     rowCount += 1
 
-    # Pickle the data for later graphing
-    if(rowCount % forecastingInterval == 0 and initTraining):
-        grapher.write_csv(y_target, y_predictions, y_time)
+    # Save the data for later graphing
+    if(currentRow == 0 and initTraining):        
+        grapher.write_csv(y_target[-forecastingInterval:],
+                          y_predictions[-forecastingInterval:],
+                          y_time[-forecastingInterval:])
 
 
 ################################################################################
 
 print "Analysis complete."
-print "Graphing and statistics..."
 
-# Hereafter is just result reporting and graphing
-# Prediction accuracy
-n_samples = rowCount-1
-training = int(jsonDataFile["windowSize"])*(60 / int(jsonDataFile["granularity"])) #init prediction period.
-T = n_samples-training #prediction length
-smoothing_win = 120
-y_target = np.asarray(y_target)
-y_predictions = np.asarray(y_predictions)
-y_target_smoothed = movingAverage(y_target, smoothing_win)
-y_predictions_smoothed = movingAverage(y_predictions, smoothing_win)
-rmse_smoothed = []
-rmse = []
-Re_mse = []
-smse = []
-co95 = []
-
-# Prediction Mean Squared Error (smooth values)
-
-PMSE_score_smoothed = np.linalg.norm(y_target_smoothed-y_predictions_smoothed)**2 / T
-# Prediction Mean Squared Error (raw values)
-PMSE_score = np.linalg.norm(y_target - y_predictions)**2 / T
-
-confidence = 1.96 / np.sqrt(T) *  np.std(np.abs(y_target-y_predictions))
-# Relative Squared Error
-Re_MSE = np.linalg.norm(y_target-y_predictions)**2 / np.linalg.norm(y_target)**2
-# Standardise Mean Squared Error
-SMSE =  np.linalg.norm(y_target-y_predictions)**2 / T / np.var(y_target)
-
-rmse_smoothed.append(np.sqrt(PMSE_score_smoothed))
-rmse.append(np.sqrt(PMSE_score))
-co95.append(confidence)
-Re_mse.append(Re_MSE)
-smse.append(SMSE)
-
-
-print "No data counts:"
-print countNoData
-
-print "PMSE for smoothed: %d" % (PMSE_score_smoothed)
-print "PMSE for nonsmoothed: %d" % (PMSE_score)
-print "-------------------------------------------------------------------------------------------------"
-print "%20s |%20s |%25s |%20s" % ("RMSE-score (smoothed)", "RMSE-score (raw)", "Relative MSE", "SMSE")
-print "%20.2f  |%20.2f |%25.2f |%20.2f " % (np.mean(np.asarray(rmse_smoothed)), np.mean(np.asarray(rmse)), np.mean(np.asarray(Re_mse)), np.mean(np.asarray(smse)))
-print "-------------------------------------------------------------------------------------------------"
-
-OBSERVS_PER_HR = 60 / int(jsonDataFile["granularity"])
-axescolor  = '#f6f6f6'  # the axes background color
-distance = n_samples//5
-tick_pos = [t for t in range(distance,n_samples,distance)]
-tick_labels = [y_time[t] for t in tick_pos]
-GRAY = '#666666'
-
-plt.rc('axes', grid=False)
-plt.rc('grid', color='0.75', linestyle='-', linewidth=0.5)
-textsize = 9
-left, width = 0.1, 0.8
-rect1 = [left, 0.7, width, 0.2]
-rect2 = [left, 0.1, width, 0.5]
-
-fig = plt.figure(facecolor='white')
-axescolor  = '#f6f6f6'  # the axes background color
-ax1 = fig.add_axes(rect1, axisbg=axescolor)  #left, bottom, width, height
-ax2 = fig.add_axes(rect2, axisbg=axescolor, sharex=ax1)
-y_target[:training] = 0
-ax1.plot((movingAverage(y_predictions, smoothing_win) - movingAverage(y_target, smoothing_win)),"r-", lw=2)
-ax1.set_yticks([-500, 0, 500])
-ax1.set_yticklabels([-.5, 0, .5])
-ax1.set_ylim(-1000, 1000)
-ax1.set_ylabel("Error (KW)")
-ax2.plot(movingAverage(y_predictions, smoothing_win),color=GRAY, lw=2, label = 'Prediction')
-ax2.plot(movingAverage(y_target, smoothing_win), "r--", label = 'Target')
-ax2.set_yticks([2000, 4000, 6000])
-ax2.set_yticklabels([2, 4, 6])
-ax2.set_ylabel("Power (KW)")
-ax2.set_xlim(0,len(y_target))
-ax2.legend(loc='upper left')
-
-# turn off upper axis tick labels, rotate the lower ones, etc
-for ax in ax1, ax2:
-    for label in ax.get_xticklabels():
-        label.set_visible(False)
-
-plt.savefig('./figures/blr_detection_umass2.pdf')
-
-plt.rc('axes', grid=False)
-plt.rc('grid', color='0.75', linestyle='-', linewidth=0.5)
-#plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
-#plt.gca().xaxis.set_major_locator(mdates.DayLocator())
-textsize = 9
-left, width = 0.1, 0.8
-rect1 = [left, 0.2, width, 0.9]
-fig = plt.figure(facecolor='white')
-axescolor  = '#f6f6f6'  # the axes background color
-ax1 = fig.add_axes(rect1, axisbg=axescolor)  #left, bottom, width, height
-p_array = np.asarray(p_array)
-hist, bin_edges = np.histogram(p_array, density=True)
-numBins = 200
-#p_array = p_array[~np.isnan(p_array)]
-#ax1.hist(p_array, numBins,color=GRAY, alpha=0.7)
-ax1.set_ylabel("P-value distribution")
-plt.savefig('./figures/pvalue_distribution_under_H0.pdf')
+grapher.print_stats(y_target, y_predictions, 120)

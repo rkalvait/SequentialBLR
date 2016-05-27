@@ -48,9 +48,9 @@ class Database:
         
 
     # Return a list of the data averaged over the specified period
-    # features is the list of features to query for
+    # columns is a list of columns names to query for
     # start_time and end_time must be datetime objects of the same type
-    def get_avg_data(self, start_time, end_time, features):
+    def get_avg_data(self, start_time, end_time, columns):
         
         if (start_time > end_time):
             raise ValueError("end_time must come after start_time")
@@ -58,16 +58,16 @@ class Database:
         #Build the query:
         isFirst = True
         qry = "SELECT "
-        for feature in features:
+        for name in columns:
             if not isFirst:
                 qry += ", "
             else:
                 isFirst = False
 
-            if "motion" in feature:
-                qry = qry + "SUM(" + feature + ")"
+            if "motion" in name:
+                qry = qry + "SUM(" + name + ")"
             else:
-                qry = qry + "AVG(" + feature + ")"
+                qry = qry + "AVG(" + name + ")"
 
         qry = qry + " FROM SMART WHERE dataTime BETWEEN %s AND %s"
 
