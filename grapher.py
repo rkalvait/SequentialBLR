@@ -15,6 +15,9 @@ from matplotlib.dates import DateFormatter
 from matplotlib.ticker import LinearLocator
 from matplotlib.lines import Line2D
 
+data_file = "results.csv"
+
+
 ################### GRAPHER CLASS ###################
 
 class Grapher:
@@ -118,7 +121,7 @@ def write_pickle(y_target, y_predict, y_time):
 # Store the given data in a CSV (comma-separated values) file
 def write_csv(y_target, y_predict, y_time):
 
-    file = open("results.csv", "wb")
+    file = open(data_file, "wb")
     
     # Write a header first
     file.write('Target, Prediction, Time\n')
@@ -148,7 +151,7 @@ def read_pickle():
 # Read the given data in a CSV (comma-separated values) file
 def read_csv():
 
-    file = open("results.csv", "rb")
+    file = open(data_file, "rb")
 
     file.next() # Throw out the header row
     
@@ -218,7 +221,6 @@ def main():
         print "Graphing at time", y_time[-1]
 
         # Smooth data if requested
-        print args.smooth
         if args.smooth != None:
             y_target = movingAverage(y_target, args.smooth)
             y_predict = movingAverage(y_predict, args.smooth)

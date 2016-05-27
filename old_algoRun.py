@@ -216,6 +216,9 @@ while startTime < endTime:
 
             # For TF train            
             #w_opt, a_opt, b_opt, S_N = tf_train(data, y)
+
+            print w_opt
+
             initTraining = 1
 
         else:
