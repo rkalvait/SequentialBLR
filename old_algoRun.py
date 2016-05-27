@@ -212,10 +212,10 @@ while startTime < endTime:
             #time += Xt[:(rowCount % matrixLength)]
 
             # For BLR train
-            #w_opt, a_opt, b_opt, S_N = train(data, y)
+            w_opt, a_opt, b_opt, S_N = train(data, y)
 
             # For TF train            
-            w_opt, a_opt, b_opt, S_N = tf_train(data, y)
+            #w_opt, a_opt, b_opt, S_N = tf_train(data, y)
             initTraining = 1
 
         else:
@@ -259,7 +259,7 @@ while startTime < endTime:
 
     # Pickle the data for later graphing
     if(rowCount % forecastingInterval == 0 and initTraining):        
-        grapher.pickle_data(y_target, y_predictions, y_time)
+        grapher.write_csv(y_target, y_predictions, y_time)
 
 
 print "Analysis complete."

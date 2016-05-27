@@ -5,14 +5,15 @@
 # Author(s):    apadin
 # Start Date:   5/13/2016
 
-import matplotlib.pyplot as plt
-from matplotlib.dates import DateFormatter
-from matplotlib.ticker import LinearLocator
-from matplotlib.lines import Line2D
 import pickle
 import time
 import argparse
 import datetime as dt
+from algoRunFunctions import movingAverage
+import matplotlib.pyplot as plt
+from matplotlib.dates import DateFormatter
+from matplotlib.ticker import LinearLocator
+from matplotlib.lines import Line2D
 
 ################### GRAPHER CLASS ###################
 
@@ -147,7 +148,7 @@ def read_pickle():
 # Read the given data in a CSV (comma-separated values) file
 def read_csv():
 
-    file = open("results.csv", "arb")
+    file = open("results.csv", "rb")
 
     file.next() # Throw out the header row
     
@@ -163,6 +164,14 @@ def read_csv():
             y_time.append(data[2])
             
     file.close()
+
+    # Remove last row if timestamp was corrupted
+    try:
+        dt.datetime.strptime(t, "%Y-%m-%d %H:%M:%S\n")
+    except:
+        y_target = y_target[:-1]
+        y_predict = y_predict[:-1]
+        y_time = y_time[:-1]
     
     return y_target, y_predict, y_time
 
@@ -171,9 +180,13 @@ def read_csv():
 def main():
 
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description='Graph data from a file using matplotlib tools')
-    parser.add_argument('-r', '--realtime', metavar = 'TIME', help='graph data in real-time, updating every TIME seconds')
-    parser.add_argument('-p', '--pickle', action='store_true', help='read data from a pickle file')
+    parser = argparse.ArgumentParser(description='Graph data from a file using matplotlib tools.')
+    parser.add_argument('-r', '--realtime', nargs='?',metavar = 'TIME',
+                        help='update the graph in real-time every TIME seconds (default 5)')
+    parser.add_argument('-p', '--pickle', action='store_true',
+                        help='read from a pickle file instead of CSV')
+    parser.add_argument('-s', '--smooth', nargs='?', metavar='WINDOW', const=120.0, type=float,
+                        help='smooth data with a smoothing window of WINDOW (default 120)')
     args = parser.parse_args()
 
     try:
@@ -203,6 +216,13 @@ def main():
         assert len(y_target) == len(y_time)
 
         print "Graphing at time", y_time[-1]
+
+        # Smooth data if requested
+        print args.smooth
+        if args.smooth != None:
+            y_target = movingAverage(y_target, args.smooth)
+            y_predict = movingAverage(y_predict, args.smooth)
+            
         grapher.graph_data(y_target, y_predict, y_time)
 
         # If not continuous, stop here
