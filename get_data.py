@@ -46,19 +46,22 @@ def get_power(config_info):
     host = host + " " + port
 
     # Connect to database
-    try:
-        cnx = pymssql.connect(server=host,
-                              user=user,
-                              password=password,
-                              database=database)
-    except Exception:
-        print "Could not connect to power database."
-        raise Exception
+    while True:
+        try:
+            cnx = pymssql.connect(server=host,
+                                  user=user,
+                                  password=password,
+                                  database=database)
+            break
+
+        except Exception:
+            print "Could not connect to power database."
+            time.sleep(1)
 
     cursor = cnx.cursor()
 
     # Query the database
-    qry_base = "SELECT TOP 1 "
+    qry_base = "SELECT TOP 4 "
 
     for data_column in config_info["database"]["table"]["data_columns"]:
         qry_base += "[" + data_column + "],"
@@ -70,7 +73,6 @@ def get_power(config_info):
            + "[" + database + "].[dbo].["
            + config_info["database"]["table"]["name"] + "]"
            + " ORDER BY [") + (config_info["database"]["table"]["time_column"] + "] DESC")
-    
     cursor.execute(qry)
     # Aggregate power to a single number
     # TODO, aggregate the power values in some way
@@ -79,7 +81,7 @@ def get_power(config_info):
         # this is where the value are, index the row returned
         # like row[0] for first data column, row[1] for second
         # data column, etc.
-       final_power = abs(row[0]) + abs(row[1]) # + 4.068189 #offset shark_1 to zero
+       final_power = final_power + max(row[0],0) + max(row[1],0) # + 4.068189 #offset shark_1 to zero
        print "Shark_2, Shark_1, Final Power", row[0], row[1], final_power
     cnx.close()
     return final_power
