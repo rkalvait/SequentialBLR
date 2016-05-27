@@ -33,11 +33,11 @@ class Grapher:
         # Set titles and axis labels for both graphs
         self.graph_predict.set_title("Prediction vs. Target")
         self.graph_predict.set_xlabel("Time")
-        self.graph_predict.set_ylabel("Power (kW)")
+        self.graph_predict.set_ylabel("Power (Watts)")
 
         self.graph_error.set_title("Error (Prediction minus Target)")
         self.graph_error.set_xlabel("Time")
-        self.graph_error.set_ylabel("Error (kW)")
+        self.graph_error.set_ylabel("Error (Watts)")
 
         plt.subplots_adjust(top = 0.87, hspace = 0.5)
 
@@ -147,7 +147,7 @@ def read_pickle():
 # Read the given data in a CSV (comma-separated values) file
 def read_csv():
 
-    file = open("results.csv", "rb")
+    file = open("results.csv", "arb")
 
     file.next() # Throw out the header row
     
@@ -155,10 +155,13 @@ def read_csv():
 
     for line in file:
         data = line.split(',')
-        y_target.append(float(data[0]))
-        y_predict.append(float(data[1]))
-        y_time.append(data[2])
-    
+
+        # Only grow list if CSV was written properly
+        if len(data) == 3:
+            y_target.append(float(data[0]))
+            y_predict.append(float(data[1]))
+            y_time.append(data[2])
+            
     file.close()
     
     return y_target, y_predict, y_time

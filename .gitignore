@@ -8,4 +8,3 @@ tensorflow
 *test*
 *.bak
 *.csv
-!X_data.bak

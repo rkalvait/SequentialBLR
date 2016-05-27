@@ -334,6 +334,3 @@ numBins = 200
 #ax1.hist(p_array, numBins,color=GRAY, alpha=0.7)
 ax1.set_ylabel("P-value distribution")
 plt.savefig('./figures/pvalue_distribution_under_H0.pdf')
-
-cursor.close()
-cnx.close()
