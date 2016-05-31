@@ -61,7 +61,8 @@ def get_power(config_info):
     cursor = cnx.cursor()
 
     # Query the database
-    qry_base = "SELECT TOP 4 "
+    Avg_over = 4
+    qry_base = "SELECT TOP " + str(Avg_over)
 
     for data_column in config_info["database"]["table"]["data_columns"]:
         qry_base += "[" + data_column + "],"
@@ -84,4 +85,4 @@ def get_power(config_info):
        final_power = final_power + max(row[0],0) + max(row[1],0) # + 4.068189 #offset shark_1 to zero
        print "Shark_2, Shark_1, Final Power", row[0], row[1], final_power
     cnx.close()
-    return final_power
+    return final_power/Avg_over
