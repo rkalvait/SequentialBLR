@@ -6,7 +6,21 @@
 import sys
 import time
 import pymssql
+import subprocess
 
+# Get the max volume from the microphone
+# sample_time is in seconds
+def get_sound(sample_time=1):
+    
+    command = "/usr/bin/arecord -D plughw:1,0 -d " + str(sample_time) + " -f S16_LE | /usr/bin/sox -t .wav - -n stat"
+    p = subprocess.Popen(command, bufsize=1, shell=True,  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    
+    for line in p.stdout:
+        if "Maximum amplitude" in line:
+            return line.split()[-1]
+
+
+# Get ZWave sensor data
 def get_data(z_server):
     """returns a list of data from the devices present
     in z_server, not in any particular order
@@ -33,6 +47,8 @@ def get_data(z_server):
     #print "Data_List: ", data_list
     return data_list
 
+
+# Get power data from power database
 def get_power(config_info):
     """Connects to the MS SQL database and retrieves the value to be used as
     total power consumption for the home
