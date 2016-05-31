@@ -154,10 +154,11 @@ while True:
         print "Row count: %s" % row_count
 
     #get new data from pi
-    # TODO: Add try catch block here around get_data in case connection to
-    # server fails then log failure to log file above
-    new_data = get_data(ZServer)
-
+    try:
+        new_data = get_data(ZServer)
+    except Exception:
+        logging.error("ZServer Connection Lost. Killing program")
+        exit(1)
     #get current energy reading
     X[row_count % matrix_length][num_sensors] = get_power(config_dict)
 

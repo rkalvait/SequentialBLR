@@ -147,8 +147,6 @@ y_time = []
 y_target = []
 y_predict = []
 
-print type(X)
-print type(X_og)
 
 while True:
 
@@ -163,13 +161,17 @@ while True:
     #get new data from pi
     # TODO: Add try catch block here around get_data in case connection to
     # server fails then log failure to log file above
-    new_data = get_data(ZServer)
-
+    try:
+        new_data = get_data(ZServer)
+    except Exception:
+        logging.error("ZServer Connection Lost. Killing program")
+        exit(1)
     #get current energy reading
     cur_row = (row_count) % matrix_length
+    og_row = row_count % 5
     T_Power =  float(get_power(config_dict))
-    X[row_count % matrix_length][num_sensors] = T_Power
-    X_og[cur_row][num_sensors] = T_Power
+    X[cur_row][num_sensors] = T_Power
+    X_og[og_row][num_sensors] = T_Power
     
     #Update X - new_data[0] contains a timestamp we don't need
     for i in range(1, num_sensors + 1):
@@ -177,14 +179,16 @@ while True:
         print "{}: {}".format(ZServer_devices[i-1], new_data[i], len(new_data), i, num_sensors)
 
         if row_count > 4:
-           Avg_last_mat = X_og[(cur_row-5):cur_row,i-1]
+           Avg_last_mat = X_og[0:,i-1]
            Avg_last_5 = sum(Avg_last_mat)/5
            Avg_last_5 = (Avg_last_5 + new_data[i])/2
            X[cur_row][i-1] = Avg_last_5
+           print X_og
         else:        
             X[cur_row][i-1] = new_data[i]
  
-        X_og[cur_row][i-1] = new_data[i]
+        X_og[og_row][i-1] = new_data[i]
+
         '''
         if new_data[i] == last_data[i-1]:
             last_data_count[i-1] += 1
@@ -192,8 +196,7 @@ while True:
             last_data[i-1] = new_data[i]
             last_data_count[i-1] = 0
         '''
-
-
+    print X[cur_row]
     # Time to train:
     if (row_count % forecasting_interval == 0
             and (row_count >= matrix_length or init_training)):
@@ -206,7 +209,7 @@ while True:
         w_opt, a_opt, b_opt, S_N = train(data, y)
         init_training = 1
         pickle.dump(X, open(XLOG_FILENAME, "w"))
-        pickle.dump(X_og,open(Xog_LOG_FILENAME),"w")
+        pickle.dump(X_og,open(Xog_LOG_FILENAME,"w"))
     #make prediction:
     if init_training:
         x_n = X[(row_count) % matrix_length][:num_sensors]

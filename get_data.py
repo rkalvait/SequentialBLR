@@ -23,7 +23,7 @@ def get_data(z_server):
             except Exception:
                 if x == 10:
                     print "Server connection lost. Closing down."
-                    sys.exit(1)
+                    raise Exception
                 else:
                     print "Server connection timed out. Attempting to reconnect"
                     time.sleep(1)
