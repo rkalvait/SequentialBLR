@@ -59,4 +59,5 @@ def tf_train(X_train, y_train):
 
         # Return the model parameters
         w_opt = np.transpose(sess.run(W))
+        w_opt = w_opt[0]
         return w_opt, 1, 1, 1

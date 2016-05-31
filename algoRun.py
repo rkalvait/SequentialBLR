@@ -115,13 +115,13 @@ for sensorID in idArray:
 countNoData.append(0) #fordebug
 
 
-#Add total energy consumption column:
+# Add total energy consumption column:
 columns.append(jsonDataFile["totalConsum"]);
 lastData.append(-1)
 shouldBeRounded.append(1)
 lastDataTime.append(dt.datetime.min)
 
-#Find latest start time, earliest end time.
+# Find latest start time, earliest end time.
 startTime = dt.datetime.strptime(max(startTimeList), "%Y-%m-%d %H:%M:%S")
 endTime = dt.datetime.strptime(min(endTimeList), "%Y-%m-%d %H:%M:%S")
 
@@ -131,9 +131,10 @@ if(int(jsonDataFile["specifyTime"])):
 
 granularityInSeconds = int(jsonDataFile["granularity"])*60
 
-#X window init.
+# Input data matrix
 X =  np.zeros([matrixLength, len(columns)], np.float32)
-y = [None]*matrixLength
+X[:, -1] = np.ones([matrixLength], np.float32)
+X = np.concatenate((X, np.zeros([matrixLength, 1], np.float32)), axis=1)
 
 grapher.clear_csv()
 
@@ -153,8 +154,12 @@ while startTime < endTime:
         print "trying time: %s " % startTime
 
     #Execute the query:
-    line = database.get_avg_data(startTime, startTime + dt.timedelta(0, granularityInSeconds), columns)
-    X[currentRow] = [max(0, i) for i in line] # remove 'nan' and negative
+    next_data = database.get_avg_data(startTime, startTime + dt.timedelta(0, granularityInSeconds), columns)
+    next_data = [max(0, data) for data in next_data] # remove 'nan' and negative
+
+    #X[currentRow, :-1] = next_data[:-1] #Sensor data
+    X[currentRow, :-2] = next_data[:-1] #Sensor data
+    X[currentRow, -1] = next_data[-1] #Power data
 
     # Time to train:
     if(rowCount % forecastingInterval == 0 and rowCount >= matrixLength):
@@ -165,7 +170,7 @@ while startTime < endTime:
 
         if(initTraining or runnable(data) > 0.5):
 
-            # For BLR train
+            # For BLR
             w_opt, a_opt, b_opt, S_N = train(data, y)
 
             # For TF train            
@@ -185,11 +190,15 @@ while startTime < endTime:
         x_n = X[currentRow, :-1]
         prediction = max(0, np.inner(w_opt,x_n))
 
+        if prediction > 12000:
+            print "WARNING: IMPOSSIBLE PREDICTION. Correcting now..."
+            prediction = y_predictions[-1]
+
         y_predictions.append(prediction)
         y_target.append(X[currentRow, -1])
         y_time.append(startTime)
 
-        error = y_predictions[-1]-y_target[-1]
+        error = y_predictions[-1] - y_target[-1]
         sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
 
         # Catching pathogenic cases where variance (ie, sigma) gets too small
@@ -213,7 +222,7 @@ while startTime < endTime:
     rowCount += 1
 
     # Save the data for later graphing
-    if(currentRow == 0 and initTraining):        
+    if(rowCount % forecastingInterval == 0 and initTraining):        
         grapher.write_csv(y_target[-forecastingInterval:],
                           y_predictions[-forecastingInterval:],
                           y_time[-forecastingInterval:])
