@@ -16,8 +16,6 @@ from matplotlib.dates import DateFormatter
 from matplotlib.ticker import LinearLocator
 from matplotlib.lines import Line2D
 
-data_file = "results.csv"
-
 
 ############################## GRAPHER CLASS ##############################
 
@@ -113,7 +111,7 @@ def clear_csv():
 
 
 # Append given data to the CSV file
-def write_csv(y_target, y_predict, y_time):
+def write_csv(y_target, y_predict, y_time, data_file = "results.csv"):
 
     file = open(data_file, "ab")
 
@@ -124,7 +122,7 @@ def write_csv(y_target, y_predict, y_time):
 
 
 # Read the data in the CSV file and return results
-def read_csv():
+def read_csv(data_file = "results.csv"):
 
     file = open(data_file, "rb")
 
@@ -232,13 +230,20 @@ def main():
                         help='update the graph in real-time every TIME seconds (default 5)')
     parser.add_argument('-s', '--smooth', nargs='?', metavar='WINDOW', const=120.0, type=float,
                         help='smooth data with a smoothing window of WINDOW (default 120)')
-
+    parser.add_argument('-f', '--file', metavar='FILE', type=str,
+                        help='specify which file to read data from')
+                        
     args = parser.parse_args()
 
     try:
         period = float(args.realtime)
     except:
         period = 0.0
+        
+    try:
+        infile = args.file
+    except:
+        infile = "results.csv"
 
     # Create grapher instance for graphing data
     if not args.nograph:
@@ -256,7 +261,7 @@ def main():
         if args.pickle:
             y_target, y_predict, y_time = read_pickle()
         else:
-            y_target, y_predict, y_time = read_csv()
+            y_target, y_predict, y_time = read_csv(infile)
 
         # Make sure the files were written properly and are the same length
         assert len(y_target) == len(y_predict)
