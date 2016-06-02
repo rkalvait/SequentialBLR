@@ -4,7 +4,7 @@
 ########## NextEnergy BLR Analysis ##########
 #############################################
 
-# Filename:     pi_seq_BLR.py
+# Filename:     pi_seq_BLR_AVG.py
 # Author(s):    dvorva, apadin, yabskbd
 # Start Date:   5/9/2016
 version_number = 1.0
@@ -106,7 +106,7 @@ alert_counter = 0
 # forecasting_interval  -> Time between training sessions
 # granularity           -> Time between sensor measurements
 
-num_sensors = len(ZServer.get_data_keys())
+num_sensors = len(ZServer.get_data_keys())#+1 #for noise detection
 matrix_length = int(sys.argv[2])*60/int(sys.argv[1])
 forecasting_interval = int(sys.argv[3])*60/int(sys.argv[1])
 granularity_in_seconds = int(sys.argv[1])*60
@@ -180,10 +180,9 @@ while True:
 
         if row_count > 4:
            Avg_last_mat = X_og[0:,i-1]
-           Avg_last_5 = sum(Avg_last_mat)/5
-           Avg_last_5 = (Avg_last_5 + new_data[i])/2
+           sum_last_5 = sum(Avg_last_mat)
+           Avg_last_5 = (sum_last_5 + new_data[i])/6 #5 pervious points plus current point = 6
            X[cur_row][i-1] = Avg_last_5
-           print X_og
         else:        
             X[cur_row][i-1] = new_data[i]
  
@@ -196,7 +195,8 @@ while True:
             last_data[i-1] = new_data[i]
             last_data_count[i-1] = 0
         '''
-    print X[cur_row]
+    print "X_og: ",X_og
+    print "X: ",X[cur_row]
     # Time to train:
     if (row_count % forecasting_interval == 0
             and (row_count >= matrix_length or init_training)):
