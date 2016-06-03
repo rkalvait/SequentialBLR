@@ -112,11 +112,12 @@ forecasting_interval = int(sys.argv[3])*60/int(sys.argv[1])
 granularity_in_seconds = int(sys.argv[1])*60
 
 # X is the matrix containing the training data
+Avg_over = 5
 X = np.zeros([matrix_length, num_sensors+1]) #sensors, energy reading
-X_og = np.zeros([5,num_sensors+1])
+X_og = np.zeros([Avg_over,num_sensors+1])
 # Use the previous X matrix to save time, if available 
 # Make sure logged_Xdata is the proper size
-if np.shape(logged_Xdata) == (matrix_length, num_sensors+1) and np.shape(logged_Xog) == (matrix_length, num_sensors+1):
+if np.shape(logged_Xdata) == (matrix_length, num_sensors+1) and np.shape(logged_Xog) == (Avg_over, num_sensors+1):
     print "sizes: logged, mat, num", np.shape(logged_Xdata), matrix_length, num_sensors+1
     X = logged_Xdata
     X_og = logged_Xog
@@ -274,7 +275,7 @@ while True:
     # Sleeping approximation (takes approx. 0.01 seconds to run)
     try:
         time.sleep(goal_time - time.time() - 0.01)
-    except ValueError:
+    except:
         if __debug___:
             print "**WARNING: Skipping sleeping due to timing issues.***"
 
