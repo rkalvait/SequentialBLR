@@ -103,7 +103,7 @@ class Grapher:
 
 # Reset the CSV and write the header
 # Deletes all previous data in the file
-def clear_csv():
+def clear_csv(data_file = "results.csv"):
 
     file = open(data_file, "wb")
     file.write('Target, Prediction, Time\n') # write the header first
