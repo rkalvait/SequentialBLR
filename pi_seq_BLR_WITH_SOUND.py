@@ -4,7 +4,7 @@
 ########## NextEnergy BLR Analysis ##########
 #############################################
 
-# Filename:     pi_seq_BLR.py
+# Filename:     pi_seq_BLR_AVG.py
 # Author(s):    dvorva, apadin, yabskbd
 # Start Date:   5/9/2016
 version_number = 1.0
@@ -37,11 +37,11 @@ import json
 import logging
 import time
 import numpy as np
-import pickle
+import grapher
 from algoRunFunctions import train, severityMetric
 from get_data import get_data, get_power
 from zwave_api import ZWave
-
+import pickle 
 
 ############################################################
 
@@ -50,7 +50,8 @@ from zwave_api import ZWave
 print "Loading configuration settings..."
 
 ##### PARAMETERS #####
-XLOG_FILENAME = "X_data.bak"
+XLOG_FILENAME = "X_DATA.bak"
+Xog_LOG_FILENAME = "Xog_DATA.bak"
 SECS_PER_MIN = 60
 MINS_PER_HOUR = 60
 HOURS_PER_DAT = 24
@@ -75,8 +76,10 @@ ZServer_devices = ZServer.list_devices()
 print ZServer_devices
 # Load the previous training window
 logged_Xdata = np.zeros([1, 1])
+logged_Xog = np.zeros([1,1])
 try:
     logged_Xdata = pickle.load(open(XLOG_FILENAME, "r"))
+    logged_Xog = pickle.load(open(Xog_LOG_FILENAME,"r"))
     print "Training backup file found..."
 except IOError:
     print "***WARNING: No training backup found.***"
@@ -103,19 +106,21 @@ alert_counter = 0
 # forecasting_interval  -> Time between training sessions
 # granularity           -> Time between sensor measurements
 
-num_sensors = len(ZServer.get_data_keys())
+num_sensors = len(ZServer.get_data_keys())#+1 #for noise detection
 matrix_length = int(sys.argv[2])*60/int(sys.argv[1])
 forecasting_interval = int(sys.argv[3])*60/int(sys.argv[1])
 granularity_in_seconds = int(sys.argv[1])*60
 
 # X is the matrix containing the training data
+Avg_over = 5
 X = np.zeros([matrix_length, num_sensors+1]) #sensors, energy reading
-
+X_og = np.zeros([Avg_over,num_sensors+1])
 # Use the previous X matrix to save time, if available 
 # Make sure logged_Xdata is the proper size
-if np.shape(logged_Xdata) == (matrix_length, num_sensors+1):
+if np.shape(logged_Xdata) == (matrix_length, num_sensors+1) and np.shape(logged_Xog) == (Avg_over, num_sensors+1):
     print "sizes: logged, mat, num", np.shape(logged_Xdata), matrix_length, num_sensors+1
     X = logged_Xdata
+    X_og = logged_Xog
     init_training = True
 else:
     print "Unable to use training backup. Continuing analysis without backup..."
@@ -139,12 +144,17 @@ row_count = 0
 goal_time = float(int(time.time() + 1.0))
 time.sleep(goal_time-time.time())
 
+y_time = []
+y_target = []
+y_predict = []
+
+
 while True:
 
     # Record the time of the next iteration
     goal_time += granularity_in_seconds
-    if __debug__:
-        print "Trying time", dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    #if __debug__:
+    print "\nTrying time", dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 
     if (not row_count % 200) and __debug__:
         print "Row count: %s" % row_count
@@ -158,22 +168,39 @@ while True:
         logging.error("ZServer Connection Lost. Killing program")
         exit(1)
     #get current energy reading
-    X[row_count % matrix_length][num_sensors] = get_power(config_dict)
-
+    cur_row = (row_count) % matrix_length
+    og_row = row_count % 5
+    T_Power =  float(get_power(config_dict))
+    X[cur_row][num_sensors] = T_Power
+    X_og[og_row][num_sensors] = T_Power
+    
     #Update X - new_data[0] contains a timestamp we don't need
     for i in range(1, num_sensors + 1):
         #We have new valid data! Also update last_data
         print "{}: {}".format(ZServer_devices[i-1], new_data[i], len(new_data), i, num_sensors)
-        X[(row_count) % matrix_length][i-1] = new_data[i]
+
+        if row_count > 4:
+           Avg_last_mat = X_og[0:,i-1]
+           sum_last_5 = sum(Avg_last_mat)
+           Avg_last_5 = (sum_last_5 + new_data[i])/6 #5 pervious points plus current point = 6
+           X[cur_row][i-1] = Avg_last_5
+        else:        
+            X[cur_row][i-1] = new_data[i]
+ 
+        X_og[og_row][i-1] = new_data[i]
+
+        '''
         if new_data[i] == last_data[i-1]:
             last_data_count[i-1] += 1
         else:
             last_data[i-1] = new_data[i]
             last_data_count[i-1] = 0
-
+        '''
+    print "X_og: ",X_og
+    print "X: ",X[cur_row]
     # Time to train:
     if (row_count % forecasting_interval == 0
-            and row_count >= matrix_length):
+            and (row_count >= matrix_length or init_training)):
         #unwrap the matrices
         data = X[(row_count % matrix_length):,:num_sensors]
         data = np.concatenate((data, X[0:(row_count % matrix_length), :num_sensors]), axis=0)
@@ -183,12 +210,13 @@ while True:
         w_opt, a_opt, b_opt, S_N = train(data, y)
         init_training = 1
         pickle.dump(X, open(XLOG_FILENAME, "w"))
-
+        pickle.dump(X_og,open(Xog_LOG_FILENAME,"w"))
     #make prediction:
     if init_training:
         x_n = X[(row_count) % matrix_length][:num_sensors]
         print "w_opt, x_n",w_opt,x_n
-        prediction = max(0, np.inner(w_opt,x_n))
+        actual_prediction = np.inner(w_opt, x_n)
+	prediction = max(0, actual_prediction)
         target = X[(row_count) % matrix_length][num_sensors]
 
         #log the new result
@@ -202,6 +230,15 @@ while True:
         #eot currently used but will be necessary to flag user:
         error = (prediction-target)
         sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
+
+	y_target.append(target)
+	y_predict.append(prediction)
+	y_time.append(goal_time)
+	
+	print "Time:", dt.datetime.fromtimestamp(goal_time).strftime('%Y-%m-%d %H:%M:%S')
+	print "Target:", target, 
+	print "Prediction:", prediction
+	print "Actual Predict:", actual_prediction
 
         # Catching pathogenic cases where variance (ie, sigma)
         # gets really really small
@@ -230,26 +267,15 @@ while True:
 
     row_count += 1
 
-    # If just trained, write results for graphing
-    if(row_count % forecasting_interval == 0 and init_training):
+    # If trained, write results for graphing
+    if(init_training):
         
-        # Write the pickled data for graphing
-        file = open("y_time.bak", "wb")
-        pickle.dump(y_time, file)
-        file.close()
-        
-        file = open("y_target.bak", "wb")
-        pickle.dump(y_target, file)
-        file.close()
-
-        file = open("y_predict.bak", "wb")
-        pickle.dump(y_predictions, file)
-        file.close()
+        grapher.write_csv(y_target, y_predict, y_time)
     
     # Sleeping approximation (takes approx. 0.01 seconds to run)
     try:
         time.sleep(goal_time - time.time() - 0.01)
-    except ValueError:
+    except:
         if __debug___:
             print "**WARNING: Skipping sleeping due to timing issues.***"
 
