@@ -1,3 +1,6 @@
+algoRun:
+	python algoRun.py
+
 install_all:
 	sudo apt-get update
 	sudo apt-get install iptables-persistent
@@ -10,3 +13,8 @@ install_all:
 	sudo apt-get install python-numpy
 	sudo apt-get install python-scipy
 	sudo apt-get install python-pymssql
+
+clean:
+	rm -rf *.csv *.bak *.pyo *.pyc
+
+

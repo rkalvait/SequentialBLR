@@ -8,3 +8,5 @@ tensorflow
 *test*
 *.bak
 *.csv
+*config.json
+!sample.config.json

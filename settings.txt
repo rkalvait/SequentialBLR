@@ -1,0 +1,7 @@
+granularity : 1
+trainingWindow : 24
+forecastingInterval : 1
+
+inputFile : SMART_results.csv
+updateRate : 60
+smoothed : 0
