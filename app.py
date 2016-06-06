@@ -83,9 +83,10 @@ class App(Frame):
 
         # Timer and power
         self.curtime = int(time.time())
+        self.curpower = 0.0
         self.timer = Label(self.dashFrame, text="Current time:\t")
         self.timer.grid(sticky=W)
-        self.power = Label(self.dashFrame, text="Current usage:\t0.0 kW")
+        self.power = Label(self.dashFrame, text="Current usage:\t")
         self.power.grid(sticky=W)
         self.after(200, self.updateTime)
 
@@ -111,7 +112,7 @@ class App(Frame):
 
         # Graph from file
         self.graph_button = Button(self.dashFrame,
-                                   text="Graph From File",
+                                   text="Refresh Graph",
                                    command=self.graphFromFile)
         self.graph_button.grid(sticky=W+E)
         self.graph_status = Label(self.dashFrame, text="")
@@ -136,9 +137,11 @@ class App(Frame):
         if self.curtime != int(time.time()):
             self.curtime = int(time.time())
             self.timer.configure(text=("Current time:\t" + time2string(time.time())))
+            self.power.configure(text=("Current power:\t%.3f kW" % self.curpower)) 
 
-        # Update power
-        #if self.
+            # Update graph
+            if (self.curtime % int(self.settings['updateRate'])) == 0:
+                self.graphFromFile()
 
         self.after(200, self.updateTime) # Repeat every x milliseconds
 
@@ -167,9 +170,12 @@ class App(Frame):
             wid.destroy()
 
         Label(self.settingsFrame, text="Settings", font=('bold')).grid(sticky=W)
-        for key in self.settings:
-            Label(self.settingsFrame, text=(key + ":   " + self.settings[key])).grid(sticky=W)
 
+        count = 1
+        for key in self.settings:
+            Label(self.settingsFrame, text=(key + ":  ")).grid(row=count, column=0, sticky=W)
+            Label(self.settingsFrame, text=str(self.settings[key])).grid(row=count, column=1, sticky=W)
+            count += 1
 
     # Opens the settings window
     def settingsWindow(self):
@@ -205,9 +211,7 @@ class App(Frame):
 
         def closeSettings():
             self.settings_button.configure(fg='black')
-            #settings_window.quit()
             settings_window.destroy()
-            print ("closed settings window")
 
         settings_window.protocol("WM_DELETE_WINDOW", closeSettings)
 
@@ -220,14 +224,26 @@ class App(Frame):
             for key in self.settings:
                 value = entry_dict[key].get().strip()
                 assert value != ''
-                self.settings[key] = entry_dict[key].get()
+                
+                # Sanitize for each potential key
+                if key != 'inputFile':
+                    assert(value.isdigit())
+                    if key != 'smoothed':
+                        assert(int(value) > 0)
+
+                else: #elif key == 'inputFile':
+                    assert(not value[0].isdigit())
+
+                self.settings[key] = value
+
         except AssertionError:
             self.settings_status.config(text="Invalid entry for %s: try again" % key, fg='red')
             self.settings_status.grid(columnspan=2)
+
         else:
             self.writeSettings(self.settings)
             self.showSettings()
-            self.settings_status.config(text="Changes saved", fg='green')
+            self.settings_status.config(text="Changes saved!", fg='blue')
             self.settings_status.grid(columnspan=2)
 
 
@@ -313,8 +329,8 @@ class App(Frame):
         self.target_line, = self.graph_predict.plot([1, 2], [0, 0], color='red', linestyle='--', label='Target')
         self.error_line, = self.graph_error.plot([1, 2], [0, 0], color='red', label='Error')
 
-        self.graph_predict.legend(handles=[self.target_line, self.predict_line])
-        self.graph_error.legend(handles=[self.error_line])
+        self.graph_predict.legend([self.target_line, self.predict_line])
+        self.graph_error.legend([self.error_line])
 
         # Tk canvas which is embedded into application
         self.canvas = FigureCanvasTkAgg(fig, master=self.graphFrame)
@@ -338,6 +354,8 @@ class App(Frame):
             self.graph_status.configure(text="Error: file does exist")
             self.graph_button.configure(state='normal', fg='black')
             return
+
+        self.curpower = float(y_target[-1])
 
         # Graph results in a new thread
         self.graph_status.configure(text="Graphing data. Please wait...")
@@ -371,7 +389,7 @@ class App(Frame):
         emax = max(y_error)
 
         self.graph_predict.set_xlim(xmin, xmax)
-        self.graph_predict.set_ylim(ymin+10, ymax)
+        self.graph_predict.set_ylim(ymin, ymax)
 
         self.graph_error.set_xlim(xmin, xmax)
         self.graph_error.set_ylim(emin, emax)
@@ -381,11 +399,13 @@ class App(Frame):
         self.target_line.set_data(y_time, y_target)
         self.error_line.set_data(y_time, y_error)
 
-        #graph_predict.autofmt_xdate()
-        #graph_error.autofmt_xdate()
+        labels = self.graph_predict.get_xticklabels()
+        plt.setp(labels, rotation=10)
+        labels = self.graph_error.get_xticklabels()
+        plt.setp(labels, rotation=10)
 
-        self.canvas.show()
         plt.tight_layout()
+        self.canvas.show()
 
         self.graph_status.configure(text="Graphing complete.")
         self.graph_button.configure(state='normal', fg='black')
