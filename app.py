@@ -138,9 +138,9 @@ class App(Frame):
             self.timer.configure(text=("Current time:\t" + time2string(time.time())))
 
         # Update power
-        if self.
+        #if self.
 
-        self.after(200, self.updateTime) # Repeat every 200 milliseconds
+        self.after(200, self.updateTime) # Repeat every x milliseconds
 
 
     ####################  SETTINGS  ####################
@@ -332,8 +332,9 @@ class App(Frame):
         self.graph_button.configure(state='disabled', fg='grey')
 
         try:
-            y_target, y_predict, y_time = grapher.read_csv(self.datafile)
-        except:
+            y_target, y_predict, y_time = grapher.read_csv(self.settings['inputFile'])
+        except Exception as e:
+            print repr(e)
             self.graph_status.configure(text="Error: file does exist")
             self.graph_button.configure(state='normal', fg='black')
             return
