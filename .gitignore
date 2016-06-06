@@ -9,4 +9,5 @@ tensorflow
 *.bak
 *.csv
 *config.json
+nextenergy_sensors.json
 !sample.config.json
