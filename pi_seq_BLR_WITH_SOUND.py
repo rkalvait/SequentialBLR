@@ -4,7 +4,7 @@
 ########## NextEnergy BLR Analysis ##########
 #############################################
 
-# Filename:     pi_seq_BLR_AVG.py
+# Filename:     pi_seq_BLR_AVG_WITH_SOUND.py
 # Author(s):    dvorva, apadin, yabskbd
 # Start Date:   5/9/2016
 version_number = 1.0
@@ -39,7 +39,7 @@ import time
 import numpy as np
 import grapher
 from algoRunFunctions import train, severityMetric
-from get_data import get_data, get_power
+from get_data import get_data, get_power, get_sound
 from zwave_api import ZWave
 import pickle 
 
@@ -106,7 +106,7 @@ alert_counter = 0
 # forecasting_interval  -> Time between training sessions
 # granularity           -> Time between sensor measurements
 
-num_sensors = len(ZServer.get_data_keys())#+1 #for noise detection
+num_sensors = len(ZServer.get_data_keys()) + 1 #for noise detection
 matrix_length = int(sys.argv[2])*60/int(sys.argv[1])
 forecasting_interval = int(sys.argv[3])*60/int(sys.argv[1])
 granularity_in_seconds = int(sys.argv[1])*60
@@ -167,6 +167,10 @@ while True:
     except Exception:
         logging.error("ZServer Connection Lost. Killing program")
         exit(1)
+    #new_data[0] contains timestamp which is not used
+    #new_data[0] gets replaced by AUDIO SENSOR DATA
+    new_data[0] = get_sound()
+
     #get current energy reading
     cur_row = (row_count) % matrix_length
     og_row = row_count % 5
@@ -175,19 +179,22 @@ while True:
     X_og[og_row][num_sensors] = T_Power
     
     #Update X - new_data[0] contains a timestamp we don't need
-    for i in range(1, num_sensors + 1):
+    for i in range(0, num_sensors):
         #We have new valid data! Also update last_data
-        print "{}: {}".format(ZServer_devices[i-1], new_data[i], len(new_data), i, num_sensors)
+        if i == 0:
+            print "Audio Sensor: ",new_data[0]
+        else:
+           print "{}: {}".format(ZServer_devices[i-1], new_data[i], len(new_data), i, num_sensors)
 
         if row_count > 4:
-           Avg_last_mat = X_og[0:,i-1]
+           Avg_last_mat = X_og[0:,i]
            sum_last_5 = sum(Avg_last_mat)
            Avg_last_5 = (sum_last_5 + new_data[i])/6 #5 pervious points plus current point = 6
-           X[cur_row][i-1] = Avg_last_5
+           X[cur_row][i] = Avg_last_5
         else:        
-            X[cur_row][i-1] = new_data[i]
+            X[cur_row][i] = new_data[i]
  
-        X_og[og_row][i-1] = new_data[i]
+        X_og[og_row][i] = new_data[i]
 
         '''
         if new_data[i] == last_data[i-1]:
