@@ -23,6 +23,7 @@ from matplotlib.lines import Line2D
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 
 import grapher
+from get_data import get_power
 
 
 ####################  DEFINITIONS  ####################
@@ -128,11 +129,17 @@ class App(Frame):
         self.analysis_status = Label(self.dashFrame, text="")
 
 
-    # Keep track of and display the current time
+    # Keep track of and display the current time and power
     def updateTime(self):
+
+        # Update time
         if self.curtime != int(time.time()):
             self.curtime = int(time.time())
             self.timer.configure(text=("Current time:\t" + time2string(time.time())))
+
+        # Update power
+        if self.
+
         self.after(200, self.updateTime) # Repeat every 200 milliseconds
 
 
