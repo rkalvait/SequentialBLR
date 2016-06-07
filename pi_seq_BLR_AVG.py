@@ -275,9 +275,9 @@ while True:
     if(init_training):
         
         # Achieve scrolling effect by only writing most recent data
-        if len(y_time) >= matrixLength:
+        if len(y_time) >= matrix_length:
             grapher.clear_csv()
-            grapher.write_csv(y_target[-matrixLength], y_predict[-matrixLength], y_time[-matrixLength])
+            grapher.write_csv(y_target[-matrix_length], y_predict[-matrix_length], y_time[-matrix_length])
         else:
             grapher.write_csv(y_target, y_predict, y_time)
 
