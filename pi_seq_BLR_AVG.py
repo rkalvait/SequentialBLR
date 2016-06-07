@@ -144,6 +144,8 @@ row_count = 0
 goal_time = float(int(time.time() + 1.0))
 time.sleep(goal_time-time.time())
 
+grapher.clear_csv()
+
 y_time = []
 y_target = []
 y_predict = []
@@ -233,9 +235,11 @@ while True:
 
 	y_target.append(target)
 	y_predict.append(prediction)
-	y_time.append(goal_time)
-	
-	print "Time:", dt.datetime.fromtimestamp(goal_time).strftime('%Y-%m-%d %H:%M:%S')
+
+        string_time = dt.datetime.fromtimestamp(goal_time).strftime('%Y-%m-%d %H:%M:%S')
+	y_time.append(string_time)
+
+	print "Time:", string_time
 	print "Target:", target, 
 	print "Prediction:", prediction
 	print "Actual Predict:", actual_prediction
@@ -270,8 +274,13 @@ while True:
     # If trained, write results for graphing
     if(init_training):
         
-        grapher.write_csv(y_target, y_predict, y_time)
-    
+        # Achieve scrolling effect by only writing most recent data
+        if len(y_time) >= matrixLength:
+            grapher.clear_csv()
+            grapher.write_csv(y_target[-matrixLength], y_predict[-matrixLength], y_time[-matrixLength])
+        else:
+            grapher.write_csv(y_target, y_predict, y_time)
+
     # Sleeping approximation (takes approx. 0.01 seconds to run)
     try:
         time.sleep(goal_time - time.time() - 0.01)

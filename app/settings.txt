@@ -4,4 +4,4 @@ forecastingInterval=1
 
 inputFile=results.csv
 updateRate=60
-smoothingWindow=0
+smoothingWindow=60
