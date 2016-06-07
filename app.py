@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 # GUI Interface for pi_seq_BLR
 # Filename:     app.py
 # Author:       Adrian Padin
@@ -24,11 +26,13 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 
 import grapher
 from get_data import get_power
+from algoRunFunctions import movingAverage
 
 
 ####################  DEFINITIONS  ####################
 
-settings_file = "settings.txt"
+settings_file = 'app/settings.txt'
+icon_file = 'app/merit_icon.ppm'
 
 
 ####################  HELPER FUNCTIONS  ####################
@@ -39,9 +43,9 @@ def time2string(timestamp):
 
 # Give the window a title and icon, destroy cleanly when X is pressed
 def initWindow(window, title=" "):
-    window.wm_title(title) # Change title
-    icon_file = PhotoImage(file = "merit_icon.ppm") # Change icon
-    window.tk.call( 'wm', 'iconphoto', window._w, icon_file )
+    window.wm_title(title)                              # Change title
+    icon = PhotoImage(file = icon_file)                 # Change icon
+    window.tk.call('wm', 'iconphoto', window._w, icon)
 
     def quit_and_destroy(window):
         window.quit()
@@ -62,13 +66,13 @@ class App(Frame):
 
         # There are two major frames: the left from contains the dashboard,
         # which displays information and options for the analysis, and the
-        # right from is the prediction/error graph.
+        # right frame contains the target/prediction and error graphs.
 
-        self.createDashFrame() # Contains the dashboard, including time, power, and settings
+        self.createDashFrame() # Contains the dashboard and settings
         self.createGraphFrame() # Frame which contains power and error graphs
 
-        # Fill and expand allow the display to grow and shrink as the user changes
-        # the window size
+        # Fill and expand allow the display to grow and shrink as the user
+        # changes the application window size
         self.pack(fill='both', expand=True)
 
 
@@ -153,11 +157,13 @@ class App(Frame):
         infile = open(settings_file, 'rb')
         self.settings = OrderedDict()
 
+        # Each setting is in the form "key=value"
         for line in infile:
-            line = line.split()
+            line = line.rstrip()
             if len(line) == 0: continue       # Ignore blank lines
             if line[0] == '#': continue       # Ignore comments
-            self.settings[line[0]] = line[-1]
+            key, value = line.split('=')
+            self.settings[key] = value
 
         infile.close()
 
@@ -174,7 +180,21 @@ class App(Frame):
         count = 1
         for key in self.settings:
             Label(self.settingsFrame, text=(key + ":  ")).grid(row=count, column=0, sticky=W)
-            Label(self.settingsFrame, text=str(self.settings[key])).grid(row=count, column=1, sticky=W)
+
+            if key == 'granularity':
+                val_text = str(self.settings[key]) + " minute(s)"
+            elif key == 'trainingWindow':
+                val_text = str(self.settings[key]) + " hour(s)"
+            elif key == 'forecastingInterval':
+                val_text = str(self.settings[key]) + " hour(s)"
+            elif key == 'updateRate':
+                val_text = str(self.settings[key]) + " second(s)"
+            elif key == 'smoothingWindow':
+                val_text = str(self.settings[key]) + " minute(s)"
+            else:
+                val_text = str(self.settings[key])
+                
+            Label(self.settingsFrame, text=val_text).grid(row=count, column=1, sticky=W)
             count += 1
 
     # Opens the settings window
@@ -182,6 +202,7 @@ class App(Frame):
 
         # Create a new window and initialize
         settings_window = Toplevel(self)
+        settings_window.transient()
         initWindow(settings_window, title="Settings")
         Grid.columnconfigure(settings_window, 0, weight=1)
 
@@ -200,18 +221,44 @@ class App(Frame):
             entry_dict[key] = new_entry
             count += 1
 
-        # Save changes button
-        Button(settings_window,
-               text="Save changes",
-               command=(lambda: self.updateSettings(entry_dict))
-               ).grid(columnspan=2, sticky=W+E)
-
-        # Display a warning if any inputs are incorrect (see "updateSettings")
-        self.settings_status = Label(settings_window, text="")
-
         def closeSettings():
             self.settings_button.configure(fg='black')
             settings_window.destroy()
+
+        def saveAndClose(entry_dict):
+
+            # Make sure the settings saved properly before exiting
+            try:
+                self.updateSettings(entry_dict)
+                
+            except AssertionError:
+                self.settings_status.config(text="Invalid entry for %s: try again" % key, fg='red')
+                self.settings_status.grid(columnspan=2)
+
+            else:
+                self.writeSettings(self.settings)
+                self.showSettings()
+                #self.settings_status.config(text="Changes saved!", fg='blue')
+                #self.settings_status.grid(columnspan=2)
+                closeSettings()
+            
+        # Save changes button
+        Button(settings_window,
+               text="Save and Close",
+               command=lambda: saveAndClose(entry_dict)
+               ).grid(columnspan=2, sticky=W+E)
+
+        '''
+        # Cancel button
+        Button(settings_window,
+               text="Cancel",
+               fg='red',
+               command=lambda: closeSettings()
+               ).grid(row=count, column=1, sticky=W+E)
+        '''
+
+        # Display a warning if any inputs are incorrect (see "updateSettings")
+        self.settings_status = Label(settings_window, text="")
 
         settings_window.protocol("WM_DELETE_WINDOW", closeSettings)
 
@@ -219,32 +266,24 @@ class App(Frame):
     # Update the current settings
     def updateSettings(self, entry_dict):
 
-        # TODO: sanitize inputs
-        try:
-            for key in self.settings:
-                value = entry_dict[key].get().strip()
-                assert value != ''
-                
-                # Sanitize for each potential key
-                if key != 'inputFile':
-                    assert(value.isdigit())
-                    if key != 'smoothed':
-                        assert(int(value) > 0)
+        # TODO: sanitize inputs better
+        for key in self.settings:
+            value = entry_dict[key].get().strip()
+            assert value != ''
+            
+            # Sanitize for each potential key
+            if key != 'inputFile':
+                assert(value.isdigit())
+                if key != 'smoothingWindow':
+                    assert(int(value) > 0)
+                else:
+                    assert(int(value) >= 0 and int(value) <= 1000)
 
-                else: #elif key == 'inputFile':
-                    assert(not value[0].isdigit())
+            else: #elif key == 'inputFile':
+                assert(not value[0].isdigit())
 
-                self.settings[key] = value
+            self.settings[key] = value
 
-        except AssertionError:
-            self.settings_status.config(text="Invalid entry for %s: try again" % key, fg='red')
-            self.settings_status.grid(columnspan=2)
-
-        else:
-            self.writeSettings(self.settings)
-            self.showSettings()
-            self.settings_status.config(text="Changes saved!", fg='blue')
-            self.settings_status.grid(columnspan=2)
 
 
     # Write settings out to the settings file
@@ -254,16 +293,17 @@ class App(Frame):
 
         # Read in current file and make changes line-by-line
         for line in outfile:
-            line_list.append(line)
-            line = line.split()
+            line = line.rstrip()
             if len(line) > 0 and line[0] != '#':
-                if line[0] in settings:
-                    line = line[0] + ' : ' + str(settings[line[0]]) + '\n'
-                    line_list[-1] = line
+                key, value = line.split('=')
+                if key in settings:
+                    line = key + '=' + str(self.settings[key])
+            line += '\n'
+            line_list.append(line)
 
         # Write changes to file
         outfile.close()
-        outfile = open("settings.txt", 'wb')
+        outfile = open(settings_file, 'wb')
         for line in line_list:
             outfile.write(line)
 
@@ -325,12 +365,17 @@ class App(Frame):
         plt.subplots_adjust(hspace = 0.3)
 
         # Add lines and legend
-        self.predict_line, = self.graph_predict.plot([1, 2], [0, 0], color='0.75', label='Prediction')
-        self.target_line, = self.graph_predict.plot([1, 2], [0, 0], color='red', linestyle='--', label='Target')
-        self.error_line, = self.graph_error.plot([1, 2], [0, 0], color='red', label='Error')
+        x, y = [1, 2], [0, 0]
+        self.target_line, = self.graph_predict.plot(x, y, color='red', linestyle='--', label='Target')
+        self.predict_line, = self.graph_predict.plot(x, y, color='0.75', label='Prediction')
+        self.error_line, = self.graph_error.plot(x, y, color='red', label='Error')
 
-        self.graph_predict.legend([self.target_line, self.predict_line])
-        self.graph_error.legend([self.error_line])
+        #self.graph_predict.legend(handles=[self.target_line, self.predict_line])
+        #self.graph_error.legend(handles=[self.error_line])
+        legend = self.target_line, self.predict_line
+        self.graph_predict.legend(handles=legend)
+        legend = self.error_line,
+        self.graph_error.legend(handles=legend)
 
         # Tk canvas which is embedded into application
         self.canvas = FigureCanvasTkAgg(fig, master=self.graphFrame)
@@ -349,13 +394,18 @@ class App(Frame):
 
         try:
             y_target, y_predict, y_time = grapher.read_csv(self.settings['inputFile'])
-        except Exception as e:
-            print repr(e)
+        except IOError as e:
             self.graph_status.configure(text="Error: file does exist")
             self.graph_button.configure(state='normal', fg='black')
             return
 
         self.curpower = float(y_target[-1])
+
+        # Smooth data if requested
+        smoothingWin = self.settings['smoothingWindow']
+        if int(smoothingWin > 0):
+            y_target = movingAverage(y_target, smoothingWin)
+            y_predict = movingAverage(y_predict, smoothingWin)
 
         # Graph results in a new thread
         self.graph_status.configure(text="Graphing data. Please wait...")
