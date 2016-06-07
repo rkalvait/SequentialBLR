@@ -366,16 +366,14 @@ class App(Frame):
 
         # Add lines and legend
         x, y = [1, 2], [0, 0]
-        self.target_line, = self.graph_predict.plot(x, y, color='red', linestyle='--', label='Target')
-        self.predict_line, = self.graph_predict.plot(x, y, color='0.75', label='Prediction')
-        self.error_line, = self.graph_error.plot(x, y, color='red', label='Error')
+        self.target_line, = self.graph_predict.plot(x, y, color='red', linestyle='--')
+        self.predict_line, = self.graph_predict.plot(x, y, color='0.75')
+        self.error_line, = self.graph_error.plot(x, y, color='red')
 
         #self.graph_predict.legend(handles=[self.target_line, self.predict_line])
         #self.graph_error.legend(handles=[self.error_line])
-        legend = self.target_line, self.predict_line
-        self.graph_predict.legend(handles=legend)
-        legend = self.error_line,
-        self.graph_error.legend(handles=legend)
+        self.graph_predict.legend([self.target_line, self.predict_line], ["Target", "Prediction"])
+        self.graph_error.legend([self.error_line], ["Error"])
 
         # Tk canvas which is embedded into application
         self.canvas = FigureCanvasTkAgg(fig, master=self.graphFrame)
@@ -402,8 +400,8 @@ class App(Frame):
         self.curpower = float(y_target[-1])
 
         # Smooth data if requested
-        smoothingWin = self.settings['smoothingWindow']
-        if int(smoothingWin > 0):
+        smoothingWin = int(self.settings['smoothingWindow'])
+        if smoothingWin > 0:
             y_target = movingAverage(y_target, smoothingWin)
             y_predict = movingAverage(y_predict, smoothingWin)
 

@@ -1,3 +1,5 @@
+#!/usr/bin/python -O
+
 import subprocess
 
 sample_time = 1
@@ -8,9 +10,6 @@ while True:
     
     p = subprocess.Popen(command, bufsize=1, shell=True,  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-    #time.sleep(sample_time + 
-    
     for line in p.stdout:
         if "Maximum amplitude" in line:
             print "Max:", line.split()[-1]
-
