@@ -41,11 +41,7 @@ class Database:
     # Execute an arbitrary SQL command
     def execute(self, command):
         self.cursor.execute(command)
-
-        # "line" contains the list of data
-        for line in self.cursor:
-            return line         
-        
+        return self.cursor.next()
 
     # Return a list of the data averaged over the specified period
     # columns is a list of columns names to query for
@@ -71,12 +67,9 @@ class Database:
 
         qry = qry + " FROM SMART WHERE dataTime BETWEEN %s AND %s"
 
-        #Execute the query:
+        # Execute the query and return the results
         self.cursor.execute(qry , (start_time, end_time))
-
-        # "line" contains the list of data
-        for line in self.cursor:
-            return line
+        return self.cursor.next()
         
         
     # Destructor

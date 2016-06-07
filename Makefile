@@ -15,6 +15,6 @@ install_all:
 	sudo apt-get install python-pymssql
 
 clean:
-	rm -rf *.csv *.bak *.pyo *.pyc
+	rm -rf *.bak *.pyo *.pyc
 
 
