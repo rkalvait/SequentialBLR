@@ -13,7 +13,7 @@ import math
 import numpy as np
 import os
 import sys
-import threading as th
+from threading import Thread, Lock
 from collections import OrderedDict
 
 import matplotlib
@@ -64,6 +64,13 @@ class App(Frame):
     def __init__(self, master=None):
 
         Frame.__init__(self, master)
+
+        # Global lock for multithreading
+        # Shared data:
+        # -- self.kill_flag
+        # -- self.graphFrame and all children
+        # -- self.settings
+        self.lock = Lock()
 
         # There are two major frames: the left from contains the dashboard,
         # which displays information and options for the analysis, and the
@@ -145,7 +152,10 @@ class App(Frame):
             self.power.configure(text=("Current power:\t%.3f kW" % self.curpower)) 
 
             # Update graph
+            self.lock.acquire()
             updateRate = int(self.settings['updateRate'])
+            self.lock.release()
+            
             if (updateRate > 0 and
                 (self.curtime % updateRate) == 0):
                 self.graphFromFile()
@@ -158,6 +168,8 @@ class App(Frame):
     # Read in settings from the settings file and put in a dictionary
     def getSettings(self):
         infile = open(settings_file, 'rb')
+
+        self.lock.acquire()
         self.settings = OrderedDict()
 
         # Each setting is in the form "key=value"
@@ -168,6 +180,7 @@ class App(Frame):
             key, value = line.split('=')
             self.settings[key] = value
 
+        self.lock.release()
         infile.close()
 
 
@@ -181,6 +194,10 @@ class App(Frame):
         Label(self.settingsFrame, text="Settings", font=('bold')).grid(sticky=W)
 
         count = 1
+
+        self.lock.acquire()
+
+        # Add units to each setting
         for key in self.settings:
             Label(self.settingsFrame, text=(key + ":  ")).grid(row=count, column=0, sticky=W)
 
@@ -199,6 +216,8 @@ class App(Frame):
                 
             Label(self.settingsFrame, text=val_text).grid(row=count, column=1, sticky=W)
             count += 1
+            
+        self.lock.release()
 
     # Opens the settings window
     def settingsWindow(self):
@@ -216,6 +235,8 @@ class App(Frame):
         # Make entry bars for all current settings
         entry_dict = {}
         count = 0
+
+        self.lock.acquire()
         for key in self.settings:
             Label(settings_window, text=(key + ":  ")).grid(row=count, column=0, sticky=W)
             new_entry = Entry(settings_window)
@@ -223,6 +244,7 @@ class App(Frame):
             new_entry.insert(0, self.settings[key])
             entry_dict[key] = new_entry
             count += 1
+        self.lock.release()
 
         def closeSettings():
             self.settings_button.configure(fg='black')
@@ -270,6 +292,7 @@ class App(Frame):
     def updateSettings(self, entry_dict):
 
         # TODO: sanitize inputs better
+        self.lock.acquire()
         for key in self.settings:
             value = entry_dict[key].get().strip()
             assert value != ''
@@ -287,6 +310,7 @@ class App(Frame):
 
             self.settings[key] = value
 
+        self.lock.release()
 
 
     # Write settings out to the settings file
@@ -294,6 +318,8 @@ class App(Frame):
         outfile = open(settings_file, 'rb')
         line_list = []
 
+        self.lock.acquire()
+        
         # Read in current file and make changes line-by-line
         for line in outfile:
             line = line.rstrip()
@@ -303,6 +329,8 @@ class App(Frame):
                     line = key + '=' + str(self.settings[key])
             line += '\n'
             line_list.append(line)
+
+        self.lock.release()
 
         # Write changes to file
         outfile.close()
@@ -317,9 +345,11 @@ class App(Frame):
     def algoStart(self):
 
         # Kill flag tells the analyzer to top and exit cleanly
+        self.lock.acquire()
         self.kill_flag = False
+        self.lock.release()
 
-        self.algo_thread = th.Thread(target=analyze, args=(self,))
+        self.algo_thread = Thread(target=analyze, args=(self,))
         self.algo_thread.start()
         
         self.analysis_status.configure(text="Running analysis...")
@@ -330,10 +360,14 @@ class App(Frame):
         self.analysis_button.grid(sticky=W+E)
         self.analysis_status.grid()
 
+
     # Start the algorithm
     def algoStop(self):
 
+        # Raise the kill flag and wait for the thread to notice
+        self.lock.acquire()
         self.kill_flag = True
+        self.lock.release()
         self.algo_thread.join()
         
         self.analysis_status.configure(text="Analysis stopped.")
@@ -351,6 +385,8 @@ class App(Frame):
     def createGraphFrame(self):
 
         self.graphFrame = Frame(self)
+        self.lock.acquire()
+        
         self.graphFrame.pack(side='right', fill='both', expand=True)
         Grid.rowconfigure(self.graphFrame, 0, weight=1)
         Grid.columnconfigure(self.graphFrame, 0, weight=1)
@@ -397,6 +433,8 @@ class App(Frame):
         self.canvas._tkcanvas.pack(side='top', fill='both', expand=True)
         self.canvas.show()
 
+        self.lock.release()
+
 
     # Get new data to graph
     def graphFromFile(self):
@@ -404,8 +442,12 @@ class App(Frame):
         self.graph_status.configure(text="Reading data from file...")
         self.graph_button.configure(state='disabled', fg='grey')
 
+        self.lock.acquire()
+        infile = self.settings['inputFile']
+        self.lock.release()
+        
         try:
-            y_target, y_predict, y_time = grapher.read_csv(self.settings['inputFile'])
+            y_target, y_predict, y_time = grapher.read_csv(infile)
         except IOError as e:
             self.graph_status.configure(text="Error: file does exist")
             self.graph_button.configure(state='normal', fg='black')
@@ -414,14 +456,17 @@ class App(Frame):
         self.curpower = float(y_target[-1])
 
         # Smooth data if requested
+        self.lock.acquire()
         smoothingWin = int(self.settings['smoothingWindow'])
+        self.lock.release()
+        
         if smoothingWin > 0:
             y_target = movingAverage(y_target, smoothingWin)
             y_predict = movingAverage(y_predict, smoothingWin)
 
         # Graph results in a new thread
         self.graph_status.configure(text="Graphing data. Please wait...")
-        graph_thread = th.Thread(target=self.graphData, args=(y_target, y_predict, y_time))
+        graph_thread = Thread(target=self.graphData, args=(y_target, y_predict, y_time))
         graph_thread.start()
 
 
@@ -450,6 +495,8 @@ class App(Frame):
         emin = min(y_error)
         emax = max(y_error)
 
+        self.lock.acquire()
+
         self.graph_predict.set_xlim(xmin, xmax)
         self.graph_predict.set_ylim(ymin, ymax)
 
@@ -468,6 +515,8 @@ class App(Frame):
 
         plt.tight_layout()
         self.canvas.show()
+
+        self.lock.release()
 
         self.graph_status.configure(text="Graphing complete.")
         self.graph_button.configure(state='normal', fg='black')

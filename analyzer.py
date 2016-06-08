@@ -46,9 +46,11 @@ def analyze(app):
                         datefmt=DATE_FORMAT)
 
     # Get analysis settings from app
+    app.lock.acquire()
     granularity = int(app.settings['granularity'])
     training_window = int(app.settings['trainingWindow'])
     forecasting_interval = int(app.settings['forecastingInterval'])
+    app.lock.release()
 
     logging.info("Starting \"Merit Energy Analysis\" with settings: %d %d %d" %
                  (granularity, training_window, forecasting_interval))
@@ -104,16 +106,22 @@ def analyze(app):
     goal_time = goal_time - (goal_time % 60)
 
     ############################## ANALYZE ##############################
-    while not app.kill_flag:
+    while True:
 
         # Sleeping approximation
         goal_time += granularity_in_seconds
         print "sleeping till " + str(dt.datetime.fromtimestamp(goal_time).strftime(DATE_FORMAT))
         while goal_time > time.time():
             time.sleep(0.1)
+            
+            app.lock.acquire()
             if app.kill_flag:
                 print "exiting program"
+                app.lock.release()
                 sys.exit(0)
+                
+            app.lock.release()
+            
         print ("Snorlax woke up!")
 
 
