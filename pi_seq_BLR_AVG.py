@@ -156,14 +156,12 @@ while True:
     # Record the time of the next iteration
     goal_time += granularity_in_seconds
     #if __debug__:
-    print "\nTrying time", dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    print "\nTrying time", dt.datetime.now().strftime(DATE_FORMAT)
 
     if (not row_count % 200) and __debug__:
         print "Row count: %s" % row_count
 
     #get new data from pi
-    # TODO: Add try catch block here around get_data in case connection to
-    # server fails then log failure to log file above
     try:
         new_data = get_data(ZServer)
     except Exception:
@@ -171,7 +169,7 @@ while True:
         exit(1)
     #get current energy reading
     cur_row = (row_count) % matrix_length
-    og_row = row_count % 5
+    og_row = row_count % Avg_over
     T_Power =  float(get_power(config_dict))
     X[cur_row][num_sensors] = T_Power
     X_og[og_row][num_sensors] = T_Power
@@ -222,8 +220,7 @@ while True:
         target = X[(row_count) % matrix_length][num_sensors]
 
         #log the new result
-        logging.info((dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-                      + " " + str(target) + " " + str(prediction)))
+        logging.info("Target: " + str(target) + "\tPrediction: " + str(prediction)))
 
         if __debug__:
             print (dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
@@ -277,7 +274,7 @@ while True:
         # Achieve scrolling effect by only writing most recent data
         if len(y_time) >= matrix_length:
             grapher.clear_csv()
-            grapher.write_csv(y_target[-matrix_length], y_predict[-matrix_length], y_time[-matrix_length])
+            grapher.write_csv(y_target[-matrix_length:], y_predict[-matrix_length:], y_time[-matrix_length:])
         else:
             grapher.write_csv(y_target, y_predict, y_time)
 

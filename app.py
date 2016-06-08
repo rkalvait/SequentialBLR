@@ -27,6 +27,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 import grapher
 from get_data import get_power
 from algoRunFunctions import movingAverage
+from analyzer import analyze
 
 
 ####################  DEFINITIONS  ####################
@@ -144,7 +145,9 @@ class App(Frame):
             self.power.configure(text=("Current power:\t%.3f kW" % self.curpower)) 
 
             # Update graph
-            if (self.curtime % int(self.settings['updateRate'])) == 0:
+            updateRate = int(self.settings['updateRate'])
+            if (updateRate > 0 and
+                (self.curtime % updateRate) == 0):
                 self.graphFromFile()
 
         self.after(200, self.updateTime) # Repeat every x milliseconds
@@ -312,6 +315,13 @@ class App(Frame):
 
     # Start the algorithm
     def algoStart(self):
+
+        # Kill flag tells the analyzer to top and exit cleanly
+        self.kill_flag = False
+
+        self.algo_thread = th.Thread(target=analyze, args=(self))
+        self.algo_thread.start()
+        
         self.analysis_status.configure(text="Running analysis...")
         self.analysis_button.configure(text="Stop Analysis",
                                        bg='red',
@@ -322,6 +332,10 @@ class App(Frame):
 
     # Start the algorithm
     def algoStop(self):
+
+        self.kill_flag = True
+        self.algo_thread.join()
+        
         self.analysis_status.configure(text="Analysis stopped.")
         self.analysis_button.configure(text="Start Analysis",
                                        bg='green',
