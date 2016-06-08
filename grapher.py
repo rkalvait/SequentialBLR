@@ -53,12 +53,12 @@ class Grapher:
         self.graph_error.xaxis.set_major_locator(LinearLocator(numticks=6))
 
         # Add lines and legend
-        self.predict_line, = self.graph_predict.plot([], [], color='0.75', label='Prediction')
-        self.target_line, = self.graph_predict.plot([], [], color='red', linestyle='--', label='Target')
-        self.error_line, = self.graph_error.plot([], [], color='red', label='Error')
+        self.predict_line, = self.graph_predict.plot([], [], color='0.75')
+        self.target_line, = self.graph_predict.plot([], [], color='red', linestyle='--')
+        self.error_line, = self.graph_error.plot([], [], color='red')
 
-        self.graph_predict.legend(handles=[self.target_line, self.predict_line])
-        self.graph_error.legend(handles=[self.error_line])
+        self.graph_predict.legend([self.target_line, self.predict_line], ["Target", "Prediction"])
+        self.graph_error.legend([self.error_line], ["Error"])
 
 
     # Plot the data
