@@ -444,6 +444,7 @@ class App(Frame):
 
         self.lock.acquire()
         infile = self.settings['inputFile']
+        smoothingWin = int(self.settings['smoothingWindow'])
         self.lock.release()
         
         try:
@@ -456,10 +457,6 @@ class App(Frame):
         self.curpower = float(y_target[-1])
 
         # Smooth data if requested
-        self.lock.acquire()
-        smoothingWin = int(self.settings['smoothingWindow'])
-        self.lock.release()
-        
         if smoothingWin > 0:
             y_target = movingAverage(y_target, smoothingWin)
             y_predict = movingAverage(y_predict, smoothingWin)
@@ -495,7 +492,9 @@ class App(Frame):
         emin = min(y_error)
         emax = max(y_error)
 
+        print "getting lock in grapher"
         self.lock.acquire()
+        print "got it!"
 
         self.graph_predict.set_xlim(xmin, xmax)
         self.graph_predict.set_ylim(ymin, ymax)
@@ -517,6 +516,7 @@ class App(Frame):
         self.canvas.show()
 
         self.lock.release()
+        print "released lock in grapher"
 
         self.graph_status.configure(text="Graphing complete.")
         self.graph_button.configure(state='normal', fg='black')
