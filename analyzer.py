@@ -8,9 +8,10 @@
 
 ############################## LIBRARIES ##############################
 import datetime as dt
+import time
+import sys
 import json
 import logging
-import time
 import numpy as np
 import grapher
 from algoRunFunctions import train, severityMetric
@@ -33,6 +34,9 @@ def analyze(app):
 
     ############################## INITIALIZE ##############################
 
+
+    print "starting analyzer"
+
     # Logging analysis results
     FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
     DATE_FORMAT = '%m/%d/%Y %I:%M:%S %p'
@@ -44,7 +48,7 @@ def analyze(app):
     # Get analysis settings from app
     granularity = int(app.settings['granularity'])
     training_window = int(app.settings['trainingWindow'])
-    forecasting_interval = int(app.settings['forecatingInterval'])
+    forecasting_interval = int(app.settings['forecastingInterval'])
 
     logging.info("Starting \"Merit Energy Analysis\" with settings: %d %d %d" %
                  (granularity, training_window, forecasting_interval))
@@ -71,6 +75,9 @@ def analyze(app):
     avg_over = 5
 
     # Load backup files if possible
+    X = np.zeros([matrix_length, num_sensors+1])
+    X_og = np.zeros([avg_over, num_sensors+1])
+    init_training = False
     try:
         logged_Xdata = pickle.load(open(Xdata_LOG_FILENAME, 'r'))
         logged_Xog = pickle.load(open(Xog_LOG_FILENAME, 'r'))
@@ -86,8 +93,6 @@ def analyze(app):
             init_training = True
         else:
             logging.warning("Warning: Backup files found but not properly formatted. Continuing without backups.")
-            X = np.zeros([matrix_length, num_sensors+1]) #sensors, energy
-            X_og = np.zeros([Avg_over, num_sensors+1])
 
     # Prepare the graphing arrays
     y_target, y_predict, y_time = [], [], []
@@ -95,18 +100,30 @@ def analyze(app):
     row_count = 0
 
     # Prepare the timer
-    goal_time = float(int(time.time()))
-
+    goal_time = time.time()
+    goal_time = goal_time - (goal_time % 60)
 
     ############################## ANALYZE ##############################
     while not app.kill_flag:
 
         # Sleeping approximation
         goal_time += granularity_in_seconds
-        try:
-            time.sleep(goal_time - time.time())
-        except IOError:
-            logging.warning("Warning: Skipping sleep due to timing issues. Check connection to the Zway Server.")
+        print "sleeping till " + str(dt.datetime.fromtimestamp(goal_time).strftime(DATE_FORMAT))
+        while goal_time > time.time():
+            time.sleep(0.1)
+            if app.kill_flag:
+                print "exiting program"
+                sys.exit(0)
+        print ("Snorlax woke up!")
+
+
+        #try:
+        #    print "sleeping until " + str(dt.datetime.fromtimestamp(goal_time).strftime(DATE_FORMAT))
+            
+            #time.sleep(goal_time - time.time())
+        #    print "woke up at " + str(dt.datetime.fromtimestamp(time.time()).strftime(DATE_FORMAT))
+        #except IOError:
+        #    logging.warning("Warning: Skipping sleep due to timing issues. Check connection to the Zway Server.")
 
         # Retrieve sensor data from ZServer
         try:
@@ -114,6 +131,8 @@ def analyze(app):
         except:
             logging.error("ZServer Connection Lost. Ending analysis.")
             exit(1)
+
+        print "getting data"
 
         # Retrieve energy usage reading
         new_power = float(get_power(config_dict))
@@ -123,20 +142,24 @@ def analyze(app):
         X_og_row = row_count % avg_over
 
         # new_data[0] contains a timestamp we don't need
-        X_og[X_og_row] = new_data[1:]
+        X_og[X_og_row, :num_sensors] = new_data[1:]
 
         # Average the previous readings (if X_og is ready)
         if row_count >= (avg_over-1):
             X[X_row, :] = np.average(X_og, axis=0) #Average of columns
-        else
+        else:
             X[X_row, :] = new_data
 
         X[X_row, num_sensors] = new_power
         X_og[X_og_row, num_sensors] = new_power
 
+        print "done getting data"
+
         # Train the model
         if (row_count % forecasting_interval == 0 and
-            (row_count >= matrix_length or init_trianing)):
+            (row_count >= matrix_length or init_training)):
+
+            print "training"
 
             # Unwrap the matrices (put the most recent data on the bottom)
             data = X[X_row:, :num_sensors]
@@ -164,7 +187,7 @@ def analyze(app):
             target = X[X_row, num_sensors]
 
             # Log the prediction and target results
-            logging.info("Target: " + str(target) + "\tPrediction: " + str(prediction)))
+            logging.info("Target: " + str(target) + "\tPrediction: " + str(prediction))
             y_target.append(target)
             y_predict.append(prediction)
             y_time.append(dt.datetime.fromtimestamp(goal_time).strftime('%Y-%m-%d %H:%M:%S'))
@@ -203,4 +226,4 @@ def analyze(app):
         # Increment and loop
         row_count += 1
 
-
+    print "Program killed"

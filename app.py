@@ -319,7 +319,7 @@ class App(Frame):
         # Kill flag tells the analyzer to top and exit cleanly
         self.kill_flag = False
 
-        self.algo_thread = th.Thread(target=analyze, args=(self))
+        self.algo_thread = th.Thread(target=analyze, args=(self,))
         self.algo_thread.start()
         
         self.analysis_status.configure(text="Running analysis...")
