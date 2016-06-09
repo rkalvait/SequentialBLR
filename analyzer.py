@@ -29,13 +29,12 @@ THRESHOLD = 10000
 
 
 ############################## ANALYZER ##############################
-def analyze(app):
+def analyze(app, granularity, training_window, forecasting_interval):
 
 
     ############################## INITIALIZE ##############################
-
-
-    print "starting analyzer"
+    print ("Starting \"Merit Energy Analysis\" with settings: %d %d %d" %
+           (granularity, training_window, forecasting_interval))
 
     # Logging analysis results
     FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
@@ -44,13 +43,6 @@ def analyze(app):
                         level=logging.DEBUG,
                         format=FORMAT,
                         datefmt=DATE_FORMAT)
-
-    # Get analysis settings from app
-    app.lock.acquire()
-    granularity = int(app.settings['granularity'])
-    training_window = int(app.settings['trainingWindow'])
-    forecasting_interval = int(app.settings['forecastingInterval'])
-    app.lock.release()
 
     logging.info("Starting \"Merit Energy Analysis\" with settings: %d %d %d" %
                  (granularity, training_window, forecasting_interval))
@@ -110,28 +102,22 @@ def analyze(app):
 
         # Sleeping approximation
         goal_time += granularity_in_seconds
-        print "sleeping till " + str(dt.datetime.fromtimestamp(goal_time).strftime(DATE_FORMAT))
+        
+        print "Sleeping until " + time2string(goal_time)
+
+        # Wake up periodically to check time and kill_flag
         while goal_time > time.time():
             time.sleep(0.1)
             
             app.lock.acquire()
             if app.kill_flag:
-                print "exiting program"
                 app.lock.release()
+
+                print "exiting program"
+                logging.info("Analysis ended by user.")
                 sys.exit(0)
                 
             app.lock.release()
-            
-        print ("Snorlax woke up!")
-
-
-        #try:
-        #    print "sleeping until " + str(dt.datetime.fromtimestamp(goal_time).strftime(DATE_FORMAT))
-            
-            #time.sleep(goal_time - time.time())
-        #    print "woke up at " + str(dt.datetime.fromtimestamp(time.time()).strftime(DATE_FORMAT))
-        #except IOError:
-        #    logging.warning("Warning: Skipping sleep due to timing issues. Check connection to the Zway Server.")
 
         # Retrieve sensor data from ZServer
         try:
@@ -202,9 +188,11 @@ def analyze(app):
 
             # Achieve scrolling effect by only graphing most recent data
             if len(y_time) >= matrix_length:
-                app.graphData(y_target[-matrix_length:], y_predict[-matrix_length:], y_time[-matrix_length:])
-            else:
-                app.graphData(y_target, y_predict, y_time)
+                y_time = y_time[-matrix_length:]
+                y_target = y_target[-matrix_length:]
+                y_predict = y_predict[-matrix_length:]
+
+            app.after_idle(lambda: app.graphFrame.graph(y_time, y_target, y_predict))
 
             # Update severity metric and check for anomalies
             error = (prediction-target)

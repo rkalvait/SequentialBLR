@@ -11,38 +11,68 @@ import time
 import datetime as dt
 import numpy as np
 from algoRunFunctions import movingAverage
+from threading import Thread
+
+from Tkinter import * # GUI Library
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.dates import DateFormatter
 from matplotlib.ticker import LinearLocator
 from matplotlib.lines import Line2D
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 
 
-############################## GRAPHER CLASS ##############################
+##############################  DEFINITIONS  ##############################
+DATE_FORMAT = '%Y-%m-%d %I:%M:%S %p'
+DEFAULT_FILE = 'results.csv'
+icon_file = 'app/merit_icon.ppm'
 
-class Grapher:
+
+##############################  HELPER FUNCTIONS  ##############################
+
+# Wrapper function for consistent time formatting
+def time2string(timestamp):
+    return dt.datetime.fromtimestamp(timestamp).strftime(DATE_FORMAT)
+
+# Give the window a title and icon, destroy cleanly when X is pressed
+def initWindow(window, title=" "):
+    window.wm_title(title)                              # Change title
+    icon = PhotoImage(file = icon_file)                 # Change icon
+    window.tk.call('wm', 'iconphoto', window._w, icon)
+
+    def quit_and_destroy(window):
+        window.quit()
+        window.destroy()
+
+    window.protocol("WM_DELETE_WINDOW", lambda: quit_and_destroy(window))
+    
+
+##############################  GRAPHER CLASS  ##############################
+class Grapher(Frame):
 
     # Constructor
-    def __init__(self):
+    def __init__(self, master=None):
 
-        plt.ion() # Allows interactice session, animate the graph
+        Frame.__init__(self, master)
+        Grid.rowconfigure(self, 0, weight=1)
+        Grid.columnconfigure(self, 0, weight=1)
 
-        # Create figure and added main title
+        # Create figure and add subplots
         fig = plt.figure()
-        fig.suptitle("Sequential BLR: Prediction and Error", fontsize=18)
-
         self.graph_predict = fig.add_subplot(211) # Target versus prediction
         self.graph_error = fig.add_subplot(212) # Error (target - prediction)
 
         # Set titles and axis labels for both graphs
-        self.graph_predict.set_title("Prediction vs. Target")
+        #fig.suptitle("Sequential BLR: Prediction and Error", fontsize=18)
+        
+        #self.graph_predict.set_title("Prediction vs. Target")
         self.graph_predict.set_xlabel("Time")
         self.graph_predict.set_ylabel("Power (Watts)")
 
-        self.graph_error.set_title("Error (Prediction minus Target)")
+        #self.graph_error.set_title("Error (Prediction minus Target)")
         self.graph_error.set_xlabel("Time")
         self.graph_error.set_ylabel("Error (Watts)")
-
-        plt.subplots_adjust(top = 0.87, hspace = 0.5)
 
         # Sets the x-axis to only show hours, minutes, and seconds of time
         self.graph_predict.xaxis.set_major_formatter(DateFormatter("%m-%d %H:%M:%S"))
@@ -51,22 +81,42 @@ class Grapher:
         # Sets the x-axis to only show 6 tick marks
         self.graph_predict.xaxis.set_major_locator(LinearLocator(numticks=6))
         self.graph_error.xaxis.set_major_locator(LinearLocator(numticks=6))
+        
+        # Spacing between subplots (changes depending on labels
+        plt.subplots_adjust(hspace = 0.3)
+        #plt.subplots_adjust(top = 0.87, hspace = 0.5)
 
         # Add lines and legend
-        self.predict_line, = self.graph_predict.plot([], [], color='0.75')
-        self.target_line, = self.graph_predict.plot([], [], color='red', linestyle='--')
-        self.error_line, = self.graph_error.plot([], [], color='red')
+        x, y = [1, 2], [0, 0]
+        self.predict_line, = self.graph_predict.plot(x, y, color='0.75')
+        self.target_line, = self.graph_predict.plot(x, y, color='red', linestyle='--')
+        self.error_line, = self.graph_error.plot(x, y, color='red')
 
+        #self.graph_predict.legend(handles=[self.target_line, self.predict_line])
+        #self.graph_error.legend(handles=[self.error_line])
         self.graph_predict.legend([self.target_line, self.predict_line], ["Target", "Prediction"])
         self.graph_error.legend([self.error_line], ["Error"])
 
+        labels = self.graph_predict.get_xticklabels()
+        plt.setp(labels, rotation=10)
+        labels = self.graph_error.get_xticklabels()
+        plt.setp(labels, rotation=10)
 
+        # Tk canvas which is embedded into application
+        self.canvas = FigureCanvasTkAgg(fig, master=self)
+        self.canvas.get_tk_widget().pack(side='bottom', fill='both', expand=True)
+        toolbar = NavigationToolbar2TkAgg(self.canvas, self)
+        toolbar.update()
+        self.canvas._tkcanvas.pack(side='top', fill='both', expand=True)
+        #self.canvas.show()
+
+        
     # Plot the data
-    def graph_data(self, y_target, y_predict, y_time):
+    def graph(self, y_time, y_target, y_predict):
 
-        # First check if y_time is list of datetime strings or UNIX timestamps
+        # Time could be datetime string or UNIX timestamp
         if isinstance(y_time[0], str):
-            y_time = [dt.datetime.strptime(t, "%Y-%m-%d %H:%M:%S\n") for t in y_time]
+            y_time = [dt.datetime.strptime(t, DATE_FORMAT) for t in y_time]
         elif isinstance(y_time[0], float):
             y_time = [dt.datetime.fromtimestamp(t) for t in y_time]
 
@@ -93,65 +143,87 @@ class Grapher:
         self.graph_error.set_ylim(emin, emax)
         #self.graph_error.set_ylim(-1000, 1000)
 
-        # Set new data (automatically updates the graph
+        # Set new data and graph
         self.predict_line.set_data(y_time, y_predict)
         self.target_line.set_data(y_time, y_target)
         self.error_line.set_data(y_time, y_error)
 
+        labels = self.graph_predict.get_xticklabels()
+        plt.setp(labels, rotation=10)
+        labels = self.graph_error.get_xticklabels()
+        plt.setp(labels, rotation=10)
 
-############################## READ/WRITE FILE ##############################
-
-# Reset the CSV and write the header
-# Deletes all previous data in the file
-def clear_csv(data_file = "results.csv"):
-
-    file = open(data_file, "wb")
-    file.write('Target, Prediction, Time\n') # write the header first
-    file.close()
+        plt.tight_layout()
+        self.canvas.show()
 
 
-# Append given data to the CSV file
-def write_csv(y_target, y_predict, y_time, data_file = "results.csv"):
+##############################  CSV CLASS  ##############################
+class CSV:
 
-    file = open(data_file, "ab")
-
-    for i in xrange(len(y_target)):
-        file.write(str(y_target[i]) + ',' + str(y_predict[i]) + ',' + str(y_time[i]) + '\n')
-
-    file.close()
-
-
-# Read the data in the CSV file and return results
-def read_csv(data_file = "results.csv"):
-
-    file = open(data_file, "rb")
-
-    file.next() # Throw out the header row
-
-    y_target, y_predict, y_time = [], [], []
-
-    for line in file:
-        data = line.split(',')
-
-        # Only grow list if CSV was written properly
-        if len(data) == 3:
-            y_target.append(float(data[0]))
-            y_predict.append(float(data[1]))
-            y_time.append(data[2])
-
-    file.close()
-
-    # Remove last row if timestamp was corrupted
-    try:
-        dt.datetime.strptime(t, "%Y-%m-%d %H:%M:%S\n")
-    except:
-        y_target = y_target[:-1]
-        y_predict = y_predict[:-1]
-        y_time = y_time[:-1]
-
-    return y_target, y_predict, y_time
+    # Constructor
+    def __init__(self, datafile = DEFAULT_FILE):
+        
+        self.datafile = datafile
+        
+    # Reset the CSV and write the header
+    # Deletes all previous data in the file
+    def clear(self):
+        
+        file = open(self.datafile, 'wb')
+        file.write('Time,Target,Prediction\n') # write the header first
+        file.close()
 
 
+    # Append given data to the CSV file
+    def append(self, y_time, y_target, y_predict):
+        
+        file = open(self.datafile, 'ab')
+
+        assert(len(y_time) == len(y_target))
+        assert(len(y_time) == len(y_predict))
+
+        # y_time should be a list of UNIX timestamps
+        y_time = [time2string(t) for t in y_time]
+        y_target = [str(t) for t in y_target]
+        y_predict = [str(t) for t in y_predict]
+
+        for i in xrange(len(y_time)):
+            file.write(y_time[0] + y_target[0] + y_predict[0] + '\n')
+        file.close()
+
+
+    # Read the data in the CSV file and return results
+    # Target and prediction are floats, time contains strings
+    def read(self):
+
+        file = open(self.datafile, "rb")
+        file.next() # Throw out the header row
+
+        y_time, y_target, y_predict = [], [], []
+
+        for line in file:
+            line = line.rstrip() #Remove newline
+            data = line.split(',')
+
+            # Only grow list if CSV was written properly
+            if len(data) == 3:
+                y_time.append(data[0])
+                y_target.append(float(data[1]))
+                y_predict.append(float(data[2]))
+
+        file.close()
+
+        # Remove last row if timestamp was corrupted
+        try:
+            dt.datetime.strptime(t, DATE_FORMAT)
+        except:
+            y_time = y_time[:-1]
+            y_target = y_target[:-1]
+            y_predict = y_predict[:-1]
+    
+        return y_time, y_target, y_predict
+
+'''
 # Store the given data in pickle files
 def write_pickle(y_target, y_predict, y_time):
 
@@ -184,9 +256,9 @@ def read_pickle():
     file.close()
 
     return y_target, y_predict, y_time
+'''
 
-
-############################## STATISTICS ##############################
+##############################  STATISTICS  ##############################
 
 # Prediction Mean Squared Error
 def print_stats(y_target, y_predict, smoothing_win=120):
@@ -194,8 +266,15 @@ def print_stats(y_target, y_predict, smoothing_win=120):
     T = len(y_target)
     y_target = np.asarray(y_target)
     y_predict = np.asarray(y_predict)
-    y_target_smoothed = movingAverage(y_target, smoothing_win)
-    y_predict_smoothed = movingAverage(y_predict, smoothing_win)
+
+    try:
+        y_target_smoothed = movingAverage(y_target, smoothing_win)
+        y_predict_smoothed = movingAverage(y_predict, smoothing_win)
+    except ValueError as e:
+        print repr(e)
+        print "Error: Smoothing window cannot be larger than number of data points"
+        y_target_smoothed = movingAverage(y_target, 1)
+        y_predict_smoothed = movingAverage(y_predict, 1)
 
     # Prediction Mean Squared Error (smooth values)
     PMSE_score_smoothed = np.linalg.norm(y_target_smoothed-y_predict_smoothed)**2 / T
@@ -212,7 +291,7 @@ def print_stats(y_target, y_predict, smoothing_win=120):
     print "---------------------------------------------------------------------------"
 
 
-############################## MAIN ##############################
+##############################  MAIN  ##############################
 
 
 # Driver for graphing at any time based on stored values
@@ -221,77 +300,90 @@ def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Graph data from a file using matplotlib tools.')
 
-
+    ''' # Pickle format not currently supported
     parser.add_argument('-p', '--pickle', action='store_true',
                         help='read from a pickle file instead of CSV')
+    '''
+    
     parser.add_argument('-n', '--nograph', action='store_true',
                         help='show only statistics, no graph')
-    parser.add_argument('-r', '--realtime', nargs='?',metavar = 'TIME', const=5.0, type=float,
-                        help='update the graph in real-time every TIME seconds (default 5)')
-    parser.add_argument('-s', '--smooth', nargs='?', metavar='WINDOW', const=120.0, type=float,
+    parser.add_argument('-r', '--realtime', nargs='?',metavar = 'TIME', const=5000, type=int,
+                        help='update the graph in real-time every TIME milliseconds (default 5)')
+    parser.add_argument('-s', '--smooth', nargs='?', metavar='WINDOW', const=120, type=int,
                         help='smooth data with a smoothing window of WINDOW (default 120)')
     parser.add_argument('-f', '--file', metavar='FILE', type=str,
                         help='specify which file to read data from')
                         
     args = parser.parse_args()
 
-    try:
-        period = float(args.realtime)
-    except:
-        period = 0.0
-        
-    try:
+
+    # Get the filename if -f was set
+    if args.file != None:
         infile = args.file
-    except:
+    else:
         infile = "results.csv"
 
-    # Create grapher instance for graphing data
-    if not args.nograph:
-        grapher = Grapher()
+    # Create CSV instance
+    csv = CSV(infile)
 
-    # Allign the timer
-    goal_time = float(int(time.time() + 1.0))
-    time.sleep(goal_time-time.time())
+    # If -n set, show statistics and then exit cleanly
+    if args.nograph:
 
-    while True:
+        print "Statistics:"
+        t_time, y_target, y_predict = csv.read()
+        print_stats(y_target, y_predict)
+        exit(0)
 
-        goal_time += period
+    # Otherwise, create the graph
+    root = Tk()
+    initWindow(root, title="Sequential BLR Results")
+    grapher = Grapher(master=root)
+    grapher.pack(fill='both', expand=True)
+    
+    # Function to periodically (or once) update the graph
+    def updateGraph(grapher, csv, smooth, period):
 
         # Attempt to read the files
-        if args.pickle:
-            y_target, y_predict, y_time = read_pickle()
-        else:
-            y_target, y_predict, y_time = read_csv(infile)
+        y_time, y_target, y_predict = csv.read()
 
-        # Make sure the files were written properly and are the same length
-        assert len(y_target) == len(y_predict)
-        assert len(y_target) == len(y_time)
-
-        # Print statistics
         print "Statistics:"
         print_stats(y_target, y_predict)
 
-        if args.nograph:
-            return(0)
-
         # Smooth data if requested
-        if args.smooth != None:
+        if smooth > 0:
             y_target = movingAverage(y_target, args.smooth)
             y_predict = movingAverage(y_predict, args.smooth)
 
         print "Graphing at time", y_time[-1]
-        grapher.graph_data(y_target, y_predict, y_time)
+        grapher.graph(y_time, y_target, y_predict)
 
-        # If not continuous, stop here
-        if period == 0.0:
-            print "Close figure to exit"
-            plt.show(block=True)
-            break
+        # If running realtime, reschedule another update
+        if period > 0.0:
+            grapher.after(period, lambda: updateGraph(grapher, csv, smooth, period))
+        else:
+            print "\nClose window to exit"
 
-        # Catch error of sleeping for a negative time
-        sleep_time = goal_time - time.time()
-        if (sleep_time > 0):
-            plt.pause(sleep_time)
+    # Get the period if -r was set
+    try:
+        period = args.realtime
+    except:
+        period = 0
 
+    # Smooth data if requested
+    if args.smooth != None:
+        smooth = args.smooth
+    else:
+        smooth = 0
+
+    # Open the graph window
+    try:
+        updateGraph(grapher, csv, smooth, period)
+        root.mainloop()
+    except KeyboardInterrupt:
+        print "Exiting on keyboard interrrupt"
+        root.quit()
+        root.destroy()
+
+# If run as main:
 if __name__ == "__main__":
     main()

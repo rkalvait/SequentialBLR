@@ -2,6 +2,6 @@ granularity=1
 trainingWindow=24
 forecastingInterval=1
 
-inputFile=results.csv
-updateRate=60
-smoothingWindow=120
+inputFile=results_525_to_530.csv
+updateRate=0
+smoothingWindow=30

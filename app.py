@@ -16,43 +16,13 @@ import sys
 from threading import Thread, Lock
 from collections import OrderedDict
 
-import matplotlib
-matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
-from matplotlib.dates import DateFormatter
-from matplotlib.ticker import LinearLocator
-from matplotlib.lines import Line2D
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
-
-import grapher
-from get_data import get_power
+from grapher import Grapher, CSV, initWindow, time2string
 from algoRunFunctions import movingAverage
 from analyzer import analyze
 
 
 ####################  DEFINITIONS  ####################
-
 settings_file = 'app/settings.txt'
-icon_file = 'app/merit_icon.ppm'
-
-
-####################  HELPER FUNCTIONS  ####################
-
-# Wrapper function for consistent time formatting
-def time2string(timestamp):
-    return dt.datetime.fromtimestamp(int(timestamp)).strftime('%Y-%m-%d %H:%M:%S')
-
-# Give the window a title and icon, destroy cleanly when X is pressed
-def initWindow(window, title=" "):
-    window.wm_title(title)                              # Change title
-    icon = PhotoImage(file = icon_file)                 # Change icon
-    window.tk.call('wm', 'iconphoto', window._w, icon)
-
-    def quit_and_destroy(window):
-        window.quit()
-        window.destroy()
-
-    window.protocol("WM_DELETE_WINDOW", lambda: quit_and_destroy(window))
 
 
 ####################  APPLICATION  ####################
@@ -68,7 +38,6 @@ class App(Frame):
         # Global lock for multithreading
         # Shared data:
         # -- self.kill_flag
-        # -- self.graphFrame and all children
         # -- self.settings
         self.lock = Lock()
 
@@ -76,12 +45,10 @@ class App(Frame):
         # which displays information and options for the analysis, and the
         # right frame contains the target/prediction and error graphs.
 
+        self.graphFrame = Grapher(master=self)
+        self.graphFrame.pack(side='right', fill='both', expand=True)
+        
         self.createDashFrame() # Contains the dashboard and settings
-        self.createGraphFrame() # Frame which contains power and error graphs
-
-        # Fill and expand allow the display to grow and shrink as the user
-        # changes the application window size
-        self.pack(fill='both', expand=True)
 
 
     ####################  DASHBOARD  ####################
@@ -122,10 +89,10 @@ class App(Frame):
         Label(self.dashFrame, text="").grid()# Gap row
         Label(self.dashFrame, text="").grid()# Gap row
 
-        # Graph from file
+        # Update the graph
         self.graph_button = Button(self.dashFrame,
                                    text="Refresh Graph",
-                                   command=self.graphFromFile)
+                                   command=self.updateGraph)
         self.graph_button.grid(sticky=W+E)
         self.graph_status = Label(self.dashFrame, text="")
         self.graph_status.grid()
@@ -152,13 +119,11 @@ class App(Frame):
             self.power.configure(text=("Current power:\t%.3f kW" % self.curpower)) 
 
             # Update graph
-            self.lock.acquire()
             updateRate = int(self.settings['updateRate'])
-            self.lock.release()
             
             if (updateRate > 0 and
                 (self.curtime % updateRate) == 0):
-                self.graphFromFile()
+                self.updateGraph()
 
         self.after(200, self.updateTime) # Repeat every x milliseconds
 
@@ -169,7 +134,6 @@ class App(Frame):
     def getSettings(self):
         infile = open(settings_file, 'rb')
 
-        self.lock.acquire()
         self.settings = OrderedDict()
 
         # Each setting is in the form "key=value"
@@ -180,7 +144,6 @@ class App(Frame):
             key, value = line.split('=')
             self.settings[key] = value
 
-        self.lock.release()
         infile.close()
 
 
@@ -193,11 +156,8 @@ class App(Frame):
 
         Label(self.settingsFrame, text="Settings", font=('bold')).grid(sticky=W)
 
-        count = 1
-
-        self.lock.acquire()
-
         # Add units to each setting
+        count = 1
         for key in self.settings:
             Label(self.settingsFrame, text=(key + ":  ")).grid(row=count, column=0, sticky=W)
 
@@ -217,7 +177,6 @@ class App(Frame):
             Label(self.settingsFrame, text=val_text).grid(row=count, column=1, sticky=W)
             count += 1
             
-        self.lock.release()
 
     # Opens the settings window
     def settingsWindow(self):
@@ -236,7 +195,6 @@ class App(Frame):
         entry_dict = {}
         count = 0
 
-        self.lock.acquire()
         for key in self.settings:
             Label(settings_window, text=(key + ":  ")).grid(row=count, column=0, sticky=W)
             new_entry = Entry(settings_window)
@@ -244,7 +202,6 @@ class App(Frame):
             new_entry.insert(0, self.settings[key])
             entry_dict[key] = new_entry
             count += 1
-        self.lock.release()
 
         def closeSettings():
             self.settings_button.configure(fg='black')
@@ -271,16 +228,14 @@ class App(Frame):
         Button(settings_window,
                text="Save and Close",
                command=lambda: saveAndClose(entry_dict)
-               ).grid(columnspan=2, sticky=W+E)
+               ).grid(columnspan=1, sticky=W+E)
 
-        '''
         # Cancel button
         Button(settings_window,
                text="Cancel",
                fg='red',
                command=lambda: closeSettings()
                ).grid(row=count, column=1, sticky=W+E)
-        '''
 
         # Display a warning if any inputs are incorrect (see "updateSettings")
         self.settings_status = Label(settings_window, text="")
@@ -292,7 +247,6 @@ class App(Frame):
     def updateSettings(self, entry_dict):
 
         # TODO: sanitize inputs better
-        self.lock.acquire()
         for key in self.settings:
             value = entry_dict[key].get().strip()
             assert value != ''
@@ -300,7 +254,7 @@ class App(Frame):
             # Sanitize for each potential key
             if key != 'inputFile':
                 assert(value.isdigit())
-                if key != 'smoothingWindow':
+                if key != 'smoothingWindow' and key != 'updateRate':
                     assert(int(value) > 0)
                 else:
                     assert(int(value) >= 0 and int(value) <= 1000)
@@ -310,15 +264,11 @@ class App(Frame):
 
             self.settings[key] = value
 
-        self.lock.release()
-
 
     # Write settings out to the settings file
     def writeSettings(self, settings):
         outfile = open(settings_file, 'rb')
         line_list = []
-
-        self.lock.acquire()
         
         # Read in current file and make changes line-by-line
         for line in outfile:
@@ -329,8 +279,6 @@ class App(Frame):
                     line = key + '=' + str(self.settings[key])
             line += '\n'
             line_list.append(line)
-
-        self.lock.release()
 
         # Write changes to file
         outfile.close()
@@ -349,7 +297,11 @@ class App(Frame):
         self.kill_flag = False
         self.lock.release()
 
-        self.algo_thread = Thread(target=analyze, args=(self,))
+        granularity = int(self.settings['granularity'])
+        window = int(self.settings['trainingWindow'])
+        interval = int(self.settings['forecastingInterval'])
+
+        self.algo_thread = Thread(target=analyze, args=(self, granularity, window, interval))
         self.algo_thread.start()
         
         self.analysis_status.configure(text="Running analysis...")
@@ -368,6 +320,7 @@ class App(Frame):
         self.lock.acquire()
         self.kill_flag = True
         self.lock.release()
+        
         self.algo_thread.join()
         
         self.analysis_status.configure(text="Analysis stopped.")
@@ -379,76 +332,24 @@ class App(Frame):
         self.analysis_status.grid()
 
 
-    ####################  GRAPHS  ####################
+    ####################  GRAPHING  ####################
 
-    # Startin point for Graph Frame
-    def createGraphFrame(self):
+    # Starts the thread which reads the file and updates the graph
+    def updateGraph(self):
 
-        self.graphFrame = Frame(self)
-        self.lock.acquire()
-        
-        self.graphFrame.pack(side='right', fill='both', expand=True)
-        Grid.rowconfigure(self.graphFrame, 0, weight=1)
-        Grid.columnconfigure(self.graphFrame, 0, weight=1)
-
-        fig = plt.figure() # Create figure
-
-        self.graph_predict = fig.add_subplot(211) # Target versus prediction
-        self.graph_error = fig.add_subplot(212)   # Error (target - prediction)
-
-        #self.graph_predict.set_title("Prediction vs. Target")
-        #self.graph_predict.set_xlabel("Time")
-        self.graph_predict.set_ylabel("Power (Watts)")
-
-        #self.graph_error.set_title("Error")
-        self.graph_error.set_xlabel("Time")
-        self.graph_error.set_ylabel("Error (Watts)")
-
-        # Sets the x-axis to only show hours, minutes, and seconds of time
-        self.graph_predict.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M"))
-        self.graph_error.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M"))
-
-        # Sets the x-axis to only show 6 tick marks
-        self.graph_predict.xaxis.set_major_locator(LinearLocator(numticks=5))
-        self.graph_error.xaxis.set_major_locator(LinearLocator(numticks=5))
-
-        plt.subplots_adjust(hspace = 0.3)
-
-        # Add lines and legend
-        x, y = [1, 2], [0, 0]
-        self.target_line, = self.graph_predict.plot(x, y, color='red', linestyle='--')
-        self.predict_line, = self.graph_predict.plot(x, y, color='0.75')
-        self.error_line, = self.graph_error.plot(x, y, color='red')
-
-        #self.graph_predict.legend(handles=[self.target_line, self.predict_line])
-        #self.graph_error.legend(handles=[self.error_line])
-        self.graph_predict.legend([self.target_line, self.predict_line], ["Target", "Prediction"])
-        self.graph_error.legend([self.error_line], ["Error"])
-
-        # Tk canvas which is embedded into application
-        self.canvas = FigureCanvasTkAgg(fig, master=self.graphFrame)
-        self.canvas.get_tk_widget().pack(side='bottom', fill='both', expand=True)
-        toolbar = NavigationToolbar2TkAgg(self.canvas, self.graphFrame)
-        toolbar.update()
-        self.canvas._tkcanvas.pack(side='top', fill='both', expand=True)
-        self.canvas.show()
-
-        self.lock.release()
-
-
-    # Get new data to graph
-    def graphFromFile(self):
-
-        self.graph_status.configure(text="Reading data from file...")
         self.graph_button.configure(state='disabled', fg='grey')
+        self.graph_status.configure(text="Reading data from file...")
 
-        self.lock.acquire()
         infile = self.settings['inputFile']
         smoothingWin = int(self.settings['smoothingWindow'])
-        self.lock.release()
+
+        '''
+        results = [None, None, None]
+        Thread(target=self.getDataFromFile).start()
+        '''
         
         try:
-            y_target, y_predict, y_time = grapher.read_csv(infile)
+            y_time, y_target, y_predict = CSV(infile).read()
         except IOError as e:
             self.graph_status.configure(text="Error: file does exist")
             self.graph_button.configure(state='normal', fg='black')
@@ -461,65 +362,17 @@ class App(Frame):
             y_target = movingAverage(y_target, smoothingWin)
             y_predict = movingAverage(y_predict, smoothingWin)
 
-        # Graph results in a new thread
+        # Graph results
         self.graph_status.configure(text="Graphing data. Please wait...")
-        graph_thread = Thread(target=self.graphData, args=(y_target, y_predict, y_time))
-        graph_thread.start()
-
-
-    # Send given data to the graph
-    def graphData(self, y_target, y_predict, y_time):
-
-        # First check if y_time is list of datetime strings or UNIX timestamps
-        if isinstance(y_time[0], str):
-            y_time = [dt.datetime.strptime(t, "%Y-%m-%d %H:%M:%S\n") for t in y_time]
-        elif isinstance(y_time[0], float):
-            y_time = [dt.datetime.fromtimestamp(t) for t in y_time]
-
-        # Calculate the error vector
-        y_error = []
-        for i in xrange(len(y_target)):
-            y_error.append(y_predict[i] - y_target[i])
-
-        # Set x and y axis limits
-        # Axes update every time to achieve "scrolling" effect
-        xmin = min(y_time)
-        xmax = max(y_time)
-
-        ymin = min(min(y_target), min(y_predict))
-        ymax = max(max(y_target), max(y_predict))
-
-        emin = min(y_error)
-        emax = max(y_error)
-
-        print "getting lock in grapher"
-        self.lock.acquire()
-        print "got it!"
-
-        self.graph_predict.set_xlim(xmin, xmax)
-        self.graph_predict.set_ylim(ymin, ymax)
-
-        self.graph_error.set_xlim(xmin, xmax)
-        self.graph_error.set_ylim(emin, emax)
-
-        # Set new data (automatically updates the graph
-        self.predict_line.set_data(y_time, y_predict)
-        self.target_line.set_data(y_time, y_target)
-        self.error_line.set_data(y_time, y_error)
-
-        labels = self.graph_predict.get_xticklabels()
-        plt.setp(labels, rotation=10)
-        labels = self.graph_error.get_xticklabels()
-        plt.setp(labels, rotation=10)
-
-        plt.tight_layout()
-        self.canvas.show()
-
-        self.lock.release()
-        print "released lock in grapher"
+        self.graphFrame.graph(y_time, y_target, y_predict)
 
         self.graph_status.configure(text="Graphing complete.")
         self.graph_button.configure(state='normal', fg='black')
+
+    '''
+    # Get new data to graph
+    def getDataFromFile(self, results):
+    '''
 
 
 ####################  MAIN EXECUTION  ####################
@@ -530,6 +383,7 @@ initWindow(root, title="NextHome Energy Analysis")
 
 try:
     app = App(master=root)
+    app.pack(fill='both', expand=True)
     root.mainloop()
 except KeyboardInterrupt:
     print "Exiting on keyboard interrrupt"
