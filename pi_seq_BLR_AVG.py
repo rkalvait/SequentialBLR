@@ -37,7 +37,7 @@ import json
 import logging
 import time
 import numpy as np
-import grapher
+from grapher import CSV, DATE_FORMAT
 from algoRunFunctions import train, severityMetric
 from get_data import get_data, get_power
 from zwave_api import ZWave
@@ -52,6 +52,7 @@ print "Loading configuration settings..."
 ##### PARAMETERS #####
 XLOG_FILENAME = "X_DATA.bak"
 Xog_LOG_FILENAME = "Xog_DATA.bak"
+RESULTS = 'results.csv'
 SECS_PER_MIN = 60
 MINS_PER_HOUR = 60
 HOURS_PER_DAT = 24
@@ -140,33 +141,36 @@ print "Starting analysis..."
 
 row_count = 0
 
-# Allign time to the second
-goal_time = float(int(time.time() + 1.0))
-time.sleep(goal_time-time.time())
-
-grapher.clear_csv()
+csv = CSV(RESULTS)
+csv.clear()
 
 y_time = []
 y_target = []
 y_predict = []
 
+# Prepare the timer
+goal_time = time.time()
+goal_time = goal_time - (goal_time % 60)
 
 while True:
 
     # Record the time of the next iteration
     goal_time += granularity_in_seconds
+
+    # Wake up periodically to check time
+    while goal_time > time.time():
+        time.sleep(0.1)
+
     #if __debug__:
     print "\nTrying time", dt.datetime.now().strftime(DATE_FORMAT)
 
-    if (not row_count % 200) and __debug__:
-        print "Row count: %s" % row_count
-
-    #get new data from pi
+    # Retrieve sensor data from ZServer
     try:
         new_data = get_data(ZServer)
-    except Exception:
-        logging.error("ZServer Connection Lost. Killing program")
+    except:
+        logging.error("ZServer Connection Lost. Ending analysis.")
         exit(1)
+
     #get current energy reading
     cur_row = (row_count) % matrix_length
     og_row = row_count % Avg_over
@@ -198,21 +202,34 @@ while True:
         '''
     print "X_og: ",X_og
     print "X: ",X[cur_row]
-    # Time to train:
-    if (row_count % forecasting_interval == 0
-            and (row_count >= matrix_length or init_training)):
-        #unwrap the matrices
-        data = X[(row_count % matrix_length):,:num_sensors]
-        data = np.concatenate((data, X[0:(row_count % matrix_length), :num_sensors]), axis=0)
-        y = X[(row_count % matrix_length):, num_sensors]
-        y = np.concatenate((y, X[:(row_count % matrix_length), num_sensors]), axis=0)
+    
+    # Train the model
+    if (row_count % forecasting_interval == 0 and
+        (row_count >= matrix_length or init_training)):
 
+        print "training"
+
+        # Unwrap the matrices (put the most recent data on the bottom)
+        data = X[X_row:, :num_sensors]
+        data = np.concatenate((data, X[:X_row, :num_sensors]), axis=0)
+        y = X[X_row:, num_sensors]
+        y = np.concatenate((y, X[:X_row, num_sensors]), axis=0)
+
+        # BLR train:
         w_opt, a_opt, b_opt, S_N = train(data, y)
-        init_training = 1
-        pickle.dump(X, open(XLOG_FILENAME, "w"))
-        pickle.dump(X_og,open(Xog_LOG_FILENAME,"w"))
-    #make prediction:
+
+        init_training = True
+
+        # Log current training windows as pickle files
+        with open(XLOG_FILENAME, 'w') as logfile:
+            pickle.dump(X, logfile)
+        with open(Xog_LOG_FILENAME, 'w') as logfile:
+            pickle.dump(X_og, logfile)
+        
+    # Make a prediction
     if init_training:
+
+        # Prediction is dot product of data and weights
         x_n = X[(row_count) % matrix_length][:num_sensors]
         print "w_opt, x_n",w_opt,x_n
         actual_prediction = np.inner(w_opt, x_n)
@@ -222,19 +239,27 @@ while True:
         #log the new result
         logging.info("Target: " + str(target) + "\tPrediction: " + str(prediction)))
 
-        if __debug__:
-            print (dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-                   + " " + str(target) + " " + str(prediction))
-
-        #eot currently used but will be necessary to flag user:
+        # Not currently used but will be necessary to flag user:
         error = (prediction-target)
         sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
 
 	y_target.append(target)
 	y_predict.append(prediction)
 
-        string_time = dt.datetime.fromtimestamp(goal_time).strftime('%Y-%m-%d %H:%M:%S')
+        string_time = dt.datetime.fromtimestamp(goal_time).strftime(DATE_FORMAT)
 	y_time.append(string_time)
+
+	# Achieve scrolling effect by only writing most recent data
+        if len(y_time) >= matrix_length:
+
+            y_time = y_time[-matrix_length:]
+            y_target = y_target[-matrix_length:]
+            y_prediction = y_prediction[-matrix_length:]
+            
+            csv.clear()
+            csv.append(y_target, y_predict, y_time)
+        else:
+            csv.append(y_target, y_predict, y_time)
 
 	print "Time:", string_time
 	print "Target:", target, 
@@ -267,21 +292,3 @@ while True:
         Sn_1 = Sn
 
     row_count += 1
-
-    # If trained, write results for graphing
-    if(init_training):
-        
-        # Achieve scrolling effect by only writing most recent data
-        if len(y_time) >= matrix_length:
-            grapher.clear_csv()
-            grapher.write_csv(y_target[-matrix_length:], y_predict[-matrix_length:], y_time[-matrix_length:])
-        else:
-            grapher.write_csv(y_target, y_predict, y_time)
-
-    # Sleeping approximation (takes approx. 0.01 seconds to run)
-    try:
-        time.sleep(goal_time - time.time() - 0.01)
-    except:
-        if __debug___:
-            print "**WARNING: Skipping sleeping due to timing issues.***"
-

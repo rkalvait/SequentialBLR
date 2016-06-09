@@ -1,6 +1,6 @@
 import time
 import datetime as dt
-from grapher import CSV 
+from grapher import CSV, DATE_FORMAT
 import sys
 
 infile = open(sys.argv[1], 'rb')
@@ -19,7 +19,7 @@ for line in infile:
         y_time = dt.datetime.fromtimestamp(float(line[2]))
 
 
-    outfile.write(dt.datetime.strftime(y_time, '%Y-%m-%d %I:%M:%S %p') + ',')
+    outfile.write(dt.datetime.strftime(y_time, DATE_FORMAT) + ',')
     outfile.write(line[0] + ',')
     outfile.write(line[1] + '\n')
     count += 1

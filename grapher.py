@@ -24,7 +24,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 
 
 ##############################  DEFINITIONS  ##############################
-DATE_FORMAT = '%Y-%m-%d %I:%M:%S %p'
+DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 DEFAULT_FILE = 'results.csv'
 icon_file = 'app/merit_icon.ppm'
 

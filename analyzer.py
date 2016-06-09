@@ -100,7 +100,7 @@ def analyze(app, granularity, training_window, forecasting_interval):
     ############################## ANALYZE ##############################
     while True:
 
-        # Sleeping approximation
+        # Record the time of the next iteration
         goal_time += granularity_in_seconds
         
         print "Sleeping until " + time2string(goal_time)
