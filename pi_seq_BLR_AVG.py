@@ -37,7 +37,7 @@ import json
 import logging
 import time
 import numpy as np
-from grapher import CSV, DATE_FORMAT
+from grapher import CSV, DATE_FORMAT, time2string
 from algoRunFunctions import train, severityMetric
 from get_data import get_data, get_power
 from zwave_api import ZWave
@@ -49,6 +49,10 @@ import pickle
 
 print "Loading configuration settings..."
 
+
+np.set_printoptions(precision=3, linewidth=200)
+
+
 ##### PARAMETERS #####
 XLOG_FILENAME = "X_DATA.bak"
 Xog_LOG_FILENAME = "Xog_DATA.bak"
@@ -59,7 +63,6 @@ HOURS_PER_DAT = 24
 
 # Logging analysis results
 FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-DATE_FORMAT = '%m/%d/%Y %I:%M:%S %p'
 logging.basicConfig(filename='/var/log/sequential_predictions.log',
                     level=logging.DEBUG,
                     format=FORMAT,
@@ -150,16 +153,17 @@ y_predict = []
 
 # Prepare the timer
 goal_time = time.time()
-goal_time = goal_time - (goal_time % 60)
+#goal_time = goal_time - (goal_time % 60)
 
 while True:
-
-    # Record the time of the next iteration
-    goal_time += granularity_in_seconds
 
     # Wake up periodically to check time
     while goal_time > time.time():
         time.sleep(0.1)
+
+    # Record the time of the next iteration
+    cur_time = goal_time
+    goal_time += granularity_in_seconds
 
     #if __debug__:
     print "\nTrying time", dt.datetime.now().strftime(DATE_FORMAT)
@@ -200,20 +204,18 @@ while True:
             last_data[i-1] = new_data[i]
             last_data_count[i-1] = 0
         '''
-    print "X_og: ",X_og
-    print "X: ",X[cur_row]
+    print "X_og: \n",X_og
+    print "X: \n",X[cur_row]
     
     # Train the model
     if (row_count % forecasting_interval == 0 and
         (row_count >= matrix_length or init_training)):
 
-        print "training"
-
         # Unwrap the matrices (put the most recent data on the bottom)
-        data = X[X_row:, :num_sensors]
-        data = np.concatenate((data, X[:X_row, :num_sensors]), axis=0)
-        y = X[X_row:, num_sensors]
-        y = np.concatenate((y, X[:X_row, num_sensors]), axis=0)
+        data = X[cur_row:, :num_sensors]
+        data = np.concatenate((data, X[:cur_row, :num_sensors]), axis=0)
+        y = X[cur_row:, num_sensors]
+        y = np.concatenate((y, X[:cur_row, num_sensors]), axis=0)
 
         # BLR train:
         w_opt, a_opt, b_opt, S_N = train(data, y)
@@ -231,13 +233,13 @@ while True:
 
         # Prediction is dot product of data and weights
         x_n = X[(row_count) % matrix_length][:num_sensors]
-        print "w_opt, x_n",w_opt,x_n
+        print "w_opt,\n", w_opt
         actual_prediction = np.inner(w_opt, x_n)
 	prediction = max(0, actual_prediction)
         target = X[(row_count) % matrix_length][num_sensors]
 
         #log the new result
-        logging.info("Target: " + str(target) + "\tPrediction: " + str(prediction)))
+        logging.info("Target: " + str(target) + "\tPrediction: " + str(prediction))
 
         # Not currently used but will be necessary to flag user:
         error = (prediction-target)
@@ -245,9 +247,7 @@ while True:
 
 	y_target.append(target)
 	y_predict.append(prediction)
-
-        string_time = dt.datetime.fromtimestamp(goal_time).strftime(DATE_FORMAT)
-	y_time.append(string_time)
+	y_time.append(cur_time)
 
 	# Achieve scrolling effect by only writing most recent data
         if len(y_time) >= matrix_length:
@@ -255,16 +255,17 @@ while True:
             y_time = y_time[-matrix_length:]
             y_target = y_target[-matrix_length:]
             y_prediction = y_prediction[-matrix_length:]
-            
-            csv.clear()
-            csv.append(y_target, y_predict, y_time)
-        else:
-            csv.append(y_target, y_predict, y_time)
 
-	print "Time:", string_time
+            csv.clear()
+            csv.append(y_time, y_target, y_predict)
+        else:
+            csv.append(y_time[-1:], y_target[-1:], y_predict[-1:])
+
+	#print "Time:", time2string(cur_time)
 	print "Target:", target, 
 	print "Prediction:", prediction
-	print "Actual Predict:", actual_prediction
+        if (actual_prediction < 0):
+	    print "Actual Predict:", actual_prediction
 
         # Catching pathogenic cases where variance (ie, sigma)
         # gets really really small

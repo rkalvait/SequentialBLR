@@ -183,12 +183,12 @@ class CSV:
         assert(len(y_time) == len(y_predict))
 
         # y_time should be a list of UNIX timestamps
-        y_time = [time2string(t) for t in y_time]
+        y_time = [time2string(float(t)) for t in y_time]
         y_target = [str(t) for t in y_target]
         y_predict = [str(t) for t in y_predict]
 
         for i in xrange(len(y_time)):
-            file.write(y_time[0] + y_target[0] + y_predict[0] + '\n')
+            file.write(y_time[i] + ',' +  y_target[i] + ',' + y_predict[i] + '\n')
         file.close()
 
 
