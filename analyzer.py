@@ -76,7 +76,7 @@ def analyze(app, granularity, training_window, forecasting_interval):
         logged_Xdata = pickle.load(open(Xdata_LOG_FILENAME, 'r'))
         logged_Xog = pickle.load(open(Xog_LOG_FILENAME, 'r'))
     except IOError:
-        logging.warning("Warning: One or more backup files not found. Continuing without backups.")
+        logging.warning("One or more backup files not found. Continuing without backups.")
     else:
         if (np.shape(logged_Xdata) == (matrix_length, num_sensors+1) and
             np.shape(logged_Xog) == (avg_over, num_sensors+1)):
@@ -86,7 +86,7 @@ def analyze(app, granularity, training_window, forecasting_interval):
             X_og = logged_Xog
             init_training = True
         else:
-            logging.warning("Warning: Backup files found but not properly formatted. Continuing without backups.")
+            logging.warning("Backup files found but not properly formatted. Continuing without backups.")
 
     # Prepare the graphing arrays
     y_target, y_predict, y_time = [], [], []
@@ -114,7 +114,7 @@ def analyze(app, granularity, training_window, forecasting_interval):
                 app.lock.release()
 
                 print "exiting program"
-                logging.info("Analysis ended by user.")
+                logging.error("Analysis ended by user. Ending program.")
                 sys.exit(0)
                 
             app.lock.release()
@@ -123,7 +123,7 @@ def analyze(app, granularity, training_window, forecasting_interval):
         try:
             new_data = get_data(ZServer)
         except:
-            logging.error("ZServer Connection Lost. Ending analysis.")
+            logging.error("ZServer Connection Lost. Ending program.")
             exit(1)
 
         print "getting data"
@@ -215,7 +215,7 @@ def analyze(app, granularity, training_window, forecasting_interval):
             elif np.abs(Sn) > THRESHOLD and alert_counter == 1:
                 Sn = 0
                 alert_counter = 0
-                logging.error("Warning: ANOMALY DETECTED")
+                logging.warning("ANOMALY DETECTED")
 
             Sn_1 = Sn
 
