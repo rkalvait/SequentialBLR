@@ -260,7 +260,7 @@ while True:
 
             y_time = y_time[-matrix_length:]
             y_target = y_target[-matrix_length:]
-            y_prediction = y_prediction[-matrix_length:]
+            y_predict = y_predict[-matrix_length:]
 
             csv.clear()
             csv.append(y_time, y_target, y_predict)

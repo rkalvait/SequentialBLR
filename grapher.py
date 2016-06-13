@@ -135,7 +135,7 @@ class Grapher(Frame):
         emax = max(y_error)
 
         self.graph_predict.set_xlim(xmin, xmax)
-        self.graph_predict.set_ylim(ymin, ymax)
+        self.graph_predict.set_ylim(0.0, ymax)
 
         self.graph_error.set_xlim(xmin, xmax)
         self.graph_error.set_ylim(emin, emax)
