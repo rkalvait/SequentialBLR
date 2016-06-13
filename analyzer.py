@@ -13,7 +13,7 @@ import sys
 import json
 import logging
 import numpy as np
-import grapher
+from grapher import time2string
 from algoRunFunctions import train, severityMetric
 from get_data import get_data, get_power
 from zwave_api import ZWave

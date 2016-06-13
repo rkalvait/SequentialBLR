@@ -19,7 +19,7 @@ from collections import OrderedDict
 
 from grapher import Grapher, CSV, initWindow, time2string
 from algoRunFunctions import movingAverage
-#from analyzer import analyze
+from analyzer import analyze
 
 
 #############################  DEFINITIONS  #############################
@@ -31,14 +31,15 @@ settings_file = 'app/settings.txt'
 # Read from the CSV file and put the result in the queue
 def getDataFromFile(csv, queue):
     queue.put((csv.read()))
-    
+
+'''    
 def analyze(a, b, c, queue):
     count = 0
     while True:
         print "analyzing:", count
         count += 1
         time.sleep(.5)
-        
+'''     
 
 #############################  APPLICATION  #############################
 
@@ -139,7 +140,7 @@ class App(Frame):
             
             if (granularity > 0 and
                 (self.curtime % (granularity * 60)) == 0):
-                self.updateGraph()
+                self.checkGraphQueue()
 
         self.after(200, self.updateTime) # Repeat every x milliseconds
 
@@ -388,7 +389,8 @@ class App(Frame):
         try:
             y_time, y_target, y_predict = self.graph_queue.get(block=False)
         except:
-            self.after(100, self.checkGraphQueue)
+            #self.after(100, self.checkGraphQueue)
+            print "Queue empty"
         else:
             # Update to most recent power reading
             self.curpower = float(y_target[-1])
