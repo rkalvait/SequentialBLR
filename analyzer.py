@@ -29,7 +29,7 @@ THRESHOLD = 10000
 
 
 ############################## ANALYZER ##############################
-def analyze(app, granularity, training_window, forecasting_interval):
+def analyze(granularity, training_window, forecasting_interval, queue):
 
 
     ############################## INITIALIZE ##############################
@@ -109,6 +109,7 @@ def analyze(app, granularity, training_window, forecasting_interval):
         while goal_time > time.time():
             time.sleep(0.1)
             
+            '''
             app.lock.acquire()
             if app.kill_flag:
                 app.lock.release()
@@ -118,6 +119,7 @@ def analyze(app, granularity, training_window, forecasting_interval):
                 sys.exit(0)
                 
             app.lock.release()
+            '''
 
         # Retrieve sensor data from ZServer
         try:
@@ -192,7 +194,7 @@ def analyze(app, granularity, training_window, forecasting_interval):
                 y_target = y_target[-matrix_length:]
                 y_predict = y_predict[-matrix_length:]
 
-            app.after_idle(lambda: app.graphFrame.graph(y_time, y_target, y_predict))
+            queue.put(y_time, y_target, y_predict) # app will eventually pick this up
 
             # Update severity metric and check for anomalies
             error = (prediction-target)

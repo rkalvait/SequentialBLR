@@ -13,19 +13,34 @@ import math
 import numpy as np
 import os
 import sys
-from threading import Thread, Lock
+from multiprocessing import Process, Queue, Lock, freeze_support
+from Queue import Empty
 from collections import OrderedDict
 
 from grapher import Grapher, CSV, initWindow, time2string
 from algoRunFunctions import movingAverage
-from analyzer import analyze
+#from analyzer import analyze
 
 
-####################  DEFINITIONS  ####################
+#############################  DEFINITIONS  #############################
 settings_file = 'app/settings.txt'
 
 
-####################  APPLICATION  ####################
+#############################  HELPER FUNCTIONS  #############################
+
+# Read from the CSV file and put the result in the queue
+def getDataFromFile(csv, queue):
+    queue.put((csv.read()))
+    
+def analyze(a, b, c, queue):
+    count = 0
+    while True:
+        print "analyzing:", count
+        count += 1
+        time.sleep(.5)
+        
+
+#############################  APPLICATION  #############################
 
 # Class that describes the application's attributes
 class App(Frame):
@@ -35,23 +50,24 @@ class App(Frame):
 
         Frame.__init__(self, master)
 
-        # Global lock for multithreading
-        # Shared data:
-        # -- self.kill_flag
-        # -- self.settings
+        # Global lock for multiprocessing
+        # Shared data: None as of right now but still..
         self.lock = Lock()
+        
+        # Stores data for graphing (time, target, prediction)
+        self.graph_queue = Queue()
 
         # There are two major frames: the left from contains the dashboard,
         # which displays information and options for the analysis, and the
         # right frame contains the target/prediction and error graphs.
-
+        
         self.graphFrame = Grapher(master=self)
         self.graphFrame.pack(side='right', fill='both', expand=True)
         
         self.createDashFrame() # Contains the dashboard and settings
 
 
-    ####################  DASHBOARD  ####################
+    #############################  DASHBOARD  #############################
 
     # Starting point for the Dashboard Frame
     def createDashFrame(self):
@@ -85,9 +101,9 @@ class App(Frame):
                                       command=self.settingsWindow)
         self.settings_button.grid()
 
-        Label(self.dashFrame, text="").grid()# Gap row
-        Label(self.dashFrame, text="").grid()# Gap row
-        Label(self.dashFrame, text="").grid()# Gap row
+        Label(self.dashFrame, text="").grid() # Gap row
+        Label(self.dashFrame, text="").grid() # Gap row
+        Label(self.dashFrame, text="").grid() # Gap row
 
         # Update the graph
         self.graph_button = Button(self.dashFrame,
@@ -97,7 +113,7 @@ class App(Frame):
         self.graph_status = Label(self.dashFrame, text="")
         self.graph_status.grid()
 
-        Label(self.dashFrame, text="").grid()# Gap row
+        Label(self.dashFrame, text="").grid() # Gap row
 
         # Start analysis
         self.analysis_button = Button(self.dashFrame,
@@ -119,16 +135,16 @@ class App(Frame):
             self.power.configure(text=("Current power:\t%.3f kW" % self.curpower)) 
 
             # Update graph
-            updateRate = int(self.settings['updateRate'])
+            granularity = int(self.settings['granularity'])
             
-            if (updateRate > 0 and
-                (self.curtime % updateRate) == 0):
+            if (granularity > 0 and
+                (self.curtime % (granularity * 60)) == 0):
                 self.updateGraph()
 
         self.after(200, self.updateTime) # Repeat every x milliseconds
 
 
-    ####################  SETTINGS  ####################
+    #############################  SETTINGS  #############################
 
     # Read in settings from the settings file and put in a dictionary
     def getSettings(self):
@@ -156,24 +172,36 @@ class App(Frame):
 
         Label(self.settingsFrame, text="Settings", font=('bold')).grid(sticky=W)
 
-        # Add units to each setting
+        # Print each setting neatly
         count = 1
         for key in self.settings:
-            Label(self.settingsFrame, text=(key + ":  ")).grid(row=count, column=0, sticky=W)
-
+        
+            val = self.settings[key]
+        
             if key == 'granularity':
-                val_text = str(self.settings[key]) + " minute(s)"
+                key_text = "Granularity: "
+                val_text = str(val) + " minute"
+
             elif key == 'trainingWindow':
-                val_text = str(self.settings[key]) + " hour(s)"
+                key_text = "Training window:  "
+                val_text = str(self.settings[key]) + " hour"
+                
             elif key == 'forecastingInterval':
-                val_text = str(self.settings[key]) + " hour(s)"
-            elif key == 'updateRate':
-                val_text = str(self.settings[key]) + " second(s)"
+                key_text = "Forecasting interval:  "
+                val_text = str(self.settings[key]) + " hour"
+                
             elif key == 'smoothingWindow':
-                val_text = str(self.settings[key]) + " minute(s)"
-            else:
+                key_text = "Smoothing window:  "
+                val_text = str(self.settings[key]) + " minute"
+                
+            elif key == 'inputFile':
+                key_text = "Input file:  "
                 val_text = str(self.settings[key])
                 
+            if val.isdigit() and int(val) != 1:
+                val_text += 's'
+            
+            Label(self.settingsFrame, text=key_text).grid(row=count, column=0, sticky=W)
             Label(self.settingsFrame, text=val_text).grid(row=count, column=1, sticky=W)
             count += 1
             
@@ -212,11 +240,9 @@ class App(Frame):
             # Make sure the settings saved properly before exiting
             try:
                 self.updateSettings(entry_dict)
-                
             except AssertionError:
                 self.settings_status.config(text="Invalid entry for %s: try again" % key, fg='red')
                 self.settings_status.grid(columnspan=2)
-
             else:
                 self.writeSettings(self.settings)
                 self.showSettings()
@@ -239,7 +265,6 @@ class App(Frame):
 
         # Display a warning if any inputs are incorrect (see "updateSettings")
         self.settings_status = Label(settings_window, text="")
-
         settings_window.protocol("WM_DELETE_WINDOW", closeSettings)
 
 
@@ -254,7 +279,7 @@ class App(Frame):
             # Sanitize for each potential key
             if key != 'inputFile':
                 assert(value.isdigit())
-                if key != 'smoothingWindow' and key != 'updateRate':
+                if key != 'smoothingWindow':
                     assert(int(value) > 0)
                 else:
                     assert(int(value) >= 0 and int(value) <= 1000)
@@ -287,28 +312,27 @@ class App(Frame):
             outfile.write(line)
 
 
-    ####################  ALGORITHM  ####################
+    #############################  ALGORITHM  #############################
 
     # Start the algorithm
     def algoStart(self):
 
-        # Kill flag tells the analyzer to top and exit cleanly
-        self.lock.acquire()
-        self.kill_flag = False
-        self.lock.release()
-
+        # Get the algo settings
         granularity = int(self.settings['granularity'])
         window = int(self.settings['trainingWindow'])
         interval = int(self.settings['forecastingInterval'])
 
-        self.algo_thread = Thread(target=analyze, args=(self, granularity, window, interval))
-        self.algo_thread.start()
+        # Start process as daemon - will get destroyed if App is killed
+        self.algo_process = Process(target=analyze, args=(granularity, window, interval, self.graph_queue))
+        self.algo_process.daemon = True
+        self.algo_process.start()
         
         self.analysis_status.configure(text="Running analysis...")
         self.analysis_button.configure(text="Stop Analysis",
                                        bg='red',
                                        activebackground='red',
                                        command=self.algoStop)
+        
         self.analysis_button.grid(sticky=W+E)
         self.analysis_status.grid()
 
@@ -316,77 +340,87 @@ class App(Frame):
     # Start the algorithm
     def algoStop(self):
 
-        # Raise the kill flag and wait for the thread to notice
-        self.lock.acquire()
-        self.kill_flag = True
-        self.lock.release()
+        # Kill the process and wait for it to close
+        self.algo_process.terminate()
+        self.algo_process.join()
         
-        self.algo_thread.join()
+        # Reset the queue (data may be corrupted)
+        self.graph_queue = Queue()
         
         self.analysis_status.configure(text="Analysis stopped.")
         self.analysis_button.configure(text="Start Analysis",
                                        bg='green',
                                        activebackground='green',
                                        command=self.algoStart)
+                                       
         self.analysis_button.grid(sticky=W+E)
         self.analysis_status.grid()
 
 
-    ####################  GRAPHING  ####################
+    #############################  GRAPHING  #############################
 
-    # Starts the thread which reads the file and updates the graph
+    # Start new process which reads the file and updates the graph
     def updateGraph(self):
 
         self.graph_button.configure(state='disabled', fg='grey')
         self.graph_status.configure(text="Reading data from file...")
 
         infile = self.settings['inputFile']
-        smoothingWin = int(self.settings['smoothingWindow'])
 
-        '''
-        results = [None, None, None]
-        Thread(target=self.getDataFromFile).start()
-        '''
-        
+        # Create new process to read the CSV file and schedule the grapher fn
+        csv = CSV(infile)
         try:
-            y_time, y_target, y_predict = CSV(infile).read()
-        except IOError as e:
-            self.graph_status.configure(text="Error: file does exist")
+            csv.read()
+        except IOError:
+            self.graph_status.configure(text="Error: \"%s\" does not exist" % infile)
             self.graph_button.configure(state='normal', fg='black')
-            return
-
-        self.curpower = float(y_target[-1])
-
-        # Smooth data if requested
-        if smoothingWin > 0:
-            y_target = movingAverage(y_target, smoothingWin)
-            y_predict = movingAverage(y_predict, smoothingWin)
-
-        # Graph results
-        self.graph_status.configure(text="Graphing data. Please wait...")
-        self.graphFrame.graph(y_time, y_target, y_predict)
-
-        self.graph_status.configure(text="Graphing complete.")
-        self.graph_button.configure(state='normal', fg='black')
-
-    '''
-    # Get new data to graph
-    def getDataFromFile(self, results):
-    '''
+        else:                
+            p = Process(target=getDataFromFile, args=(csv, self.graph_queue))
+            p.daemon = True
+            p.start()
+            print "Created new processs ", p.pid
+            self.after(100, self.checkGraphQueue)
 
 
-####################  MAIN EXECUTION  ####################
+    # Check the graph queue 
+    def checkGraphQueue(self):
 
-# Execute the application
-root = Tk()
-initWindow(root, title="NextHome Energy Analysis")
+        try:
+            y_time, y_target, y_predict = self.graph_queue.get(block=False)
+        except:
+            self.after(100, self.checkGraphQueue)
+        else:
+            # Update to most recent power reading
+            self.curpower = float(y_target[-1])
 
-try:
-    app = App(master=root)
-    app.pack(fill='both', expand=True)
-    root.mainloop()
-except KeyboardInterrupt:
-    print "Exiting on keyboard interrrupt"
-    root.quit()
-    root.destroy()
-    
+            # Smooth data if requested
+            smoothingWin = int(self.settings['smoothingWindow'])
+            if smoothingWin > 0:
+                y_target = movingAverage(y_target, smoothingWin)
+                y_predict = movingAverage(y_predict, smoothingWin)
+
+            # Graph results
+            self.graph_status.configure(text="Graphing data. Please wait...")
+            self.graphFrame.graph(y_time, y_target, y_predict)
+
+            self.graph_status.configure(text="Graphing complete.")
+            self.graph_button.configure(state='normal', fg='black')
+
+
+#############################  MAIN EXECUTION  #############################
+
+# Execute the main application
+if __name__ == '__main__':
+    freeze_support()
+    root = Tk()
+    initWindow(root, title="NextHome Energy Analysis")
+
+    try:
+        app = App(master=root)
+        app.pack(fill='both', expand=True)
+        root.mainloop()
+    except KeyboardInterrupt:
+        print "Exiting on keyboard interrrupt"
+        root.quit()
+        root.destroy()
+        

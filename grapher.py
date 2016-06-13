@@ -65,11 +65,9 @@ class Grapher(Frame):
 
         # Set titles and axis labels for both graphs
         #fig.suptitle("Sequential BLR: Prediction and Error", fontsize=18)
-        
         #self.graph_predict.set_title("Prediction vs. Target")
         self.graph_predict.set_xlabel("Time")
         self.graph_predict.set_ylabel("Power (Watts)")
-
         #self.graph_error.set_title("Error (Prediction minus Target)")
         self.graph_error.set_xlabel("Time")
         self.graph_error.set_ylabel("Error (Watts)")
@@ -89,14 +87,13 @@ class Grapher(Frame):
         # Add lines and legend
         x, y = [1, 2], [0, 0]
         self.predict_line, = self.graph_predict.plot(x, y, color='0.75')
-        self.target_line, = self.graph_predict.plot(x, y, color='red', linestyle='--')
+        self.target_line, = self.graph_predict.plot(x, y, color='blue', linestyle='--')
         self.error_line, = self.graph_error.plot(x, y, color='red')
 
-        #self.graph_predict.legend(handles=[self.target_line, self.predict_line])
-        #self.graph_error.legend(handles=[self.error_line])
         self.graph_predict.legend([self.target_line, self.predict_line], ["Target", "Prediction"])
         self.graph_error.legend([self.error_line], ["Error"])
 
+        # Angle the labels slightly so they are more distinguishable
         labels = self.graph_predict.get_xticklabels()
         plt.setp(labels, rotation=10)
         labels = self.graph_error.get_xticklabels()
@@ -108,17 +105,18 @@ class Grapher(Frame):
         toolbar = NavigationToolbar2TkAgg(self.canvas, self)
         toolbar.update()
         self.canvas._tkcanvas.pack(side='top', fill='both', expand=True)
-        #self.canvas.show()
 
         
     # Plot the data
-    def graph(self, y_time, y_target, y_predict):
-
+    def graph(self, y_time, y_target, y_predict, anomalies=[]):
+    
         # Time could be datetime string or UNIX timestamp
         if isinstance(y_time[0], str):
             y_time = [dt.datetime.strptime(t, DATE_FORMAT) for t in y_time]
+            anomalies = [dt.datetime.strptime(t, DATE_FORMAT) for t in anomalies]
         elif isinstance(y_time[0], float):
             y_time = [dt.datetime.fromtimestamp(t) for t in y_time]
+            anomalies = [dt.datetime.fromtimestamp(t) for t in anomalies]
 
         # Calculate the error vector
         y_error = []
@@ -152,10 +150,27 @@ class Grapher(Frame):
         plt.setp(labels, rotation=10)
         labels = self.graph_error.get_xticklabels()
         plt.setp(labels, rotation=10)
+        
+        '''
+        # Plot red areas for where the anomalies are
+        if self.first:
+            self.first = False
+            #self.graph_predict.axvspan(y_time[50], y_time[100], fc='red', ec='red', alpha = 0.2)
+            #self.graph_predict.axvspan(y_time[200], y_time[300], fc='red', ec='red', alpha = 0.2)
+            #self.graph_predict.axvspan(y_time[500], y_time[600], fc='red', ec='red', alpha = 0.2)
+            #self.graph_predict.axvspan(y_time[800], y_time[900], fc='red', ec='red', alpha = 0.2)
+
+            cur_time = dt.datetime.strptime("2016-06-10 00:00:00", DATE_FORMAT)
+            for x in xrange(20):
+                self.graph_predict.axvline(x=cur_time, c='red', alpha=0.5)
+                cur_time += dt.timedelta(0, 2700)
+        '''
 
         plt.tight_layout()
         self.canvas.show()
-
+    
+    #first = True
+    
 
 ##############################  CSV CLASS  ##############################
 class CSV:
@@ -207,7 +222,13 @@ class CSV:
 
             # Only grow list if CSV was written properly
             if len(data) == 3:
-                y_time.append(data[0])
+            
+                # Could be a timestamp or a datetime string
+                try:
+                    y_time.append(float(data[0]))
+                except ValueError:
+                    y_time.append(data[0])
+                
                 y_target.append(float(data[1]))
                 y_predict.append(float(data[2]))
 
@@ -223,40 +244,6 @@ class CSV:
     
         return y_time, y_target, y_predict
 
-'''
-# Store the given data in pickle files
-def write_pickle(y_target, y_predict, y_time):
-
-    file = open("y_target.bak", "wb")
-    pickle.dump(y_target, file)
-    file.close()
-
-    file = open("y_predict.bak", "wb")
-    pickle.dump(y_predict, file)
-    file.close()
-
-    file = open("y_time.bak", "wb")
-    pickle.dump(y_time, file)
-    file.close()
-
-
-# Read the given data in pickle files
-def read_pickle():
-
-    file = open("y_target.bak", "rb")
-    y_target = pickle.load(file)
-    file.close()
-
-    file = open("y_predict.bak", "rb")
-    y_predict = pickle.load(file)
-    file.close()
-
-    file = open("y_time.bak", "rb")
-    y_time = pickle.load(file)
-    file.close()
-
-    return y_target, y_predict, y_time
-'''
 
 ##############################  STATISTICS  ##############################
 
@@ -292,19 +279,11 @@ def print_stats(y_target, y_predict, smoothing_win=120):
 
 
 ##############################  MAIN  ##############################
-
-
-# Driver for graphing at any time based on stored values
 def main():
 
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Graph data from a file using matplotlib tools.')
 
-    ''' # Pickle format not currently supported
-    parser.add_argument('-p', '--pickle', action='store_true',
-                        help='read from a pickle file instead of CSV')
-    '''
-    
     parser.add_argument('-n', '--nograph', action='store_true',
                         help='show only statistics, no graph')
     parser.add_argument('-r', '--realtime', nargs='?',metavar = 'TIME', const=5000, type=int,
@@ -321,7 +300,7 @@ def main():
     if args.file != None:
         infile = args.file
     else:
-        infile = "results.csv"
+        infile = 'results.csv'
 
     # Create CSV instance
     csv = CSV(infile)
