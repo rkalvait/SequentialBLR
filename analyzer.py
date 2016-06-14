@@ -13,7 +13,7 @@ import sys
 import json
 import logging
 import numpy as np
-from grapher import time2string
+from grapher import time2string, DATE_FORMAT
 from algoRunFunctions import train, severityMetric
 from get_data import get_data, get_power
 from zwave_api import ZWave
@@ -38,7 +38,6 @@ def analyze(granularity, training_window, forecasting_interval, queue):
 
     # Logging analysis results
     FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-    DATE_FORMAT = '%m/%d/%Y %I:%M:%S %p'
     logging.basicConfig(filename=LOG_FILENAME,
                         level=logging.DEBUG,
                         format=FORMAT,
@@ -121,6 +120,8 @@ def analyze(granularity, training_window, forecasting_interval, queue):
             app.lock.release()
             '''
 
+        print "getting data"
+
         # Retrieve sensor data from ZServer
         try:
             new_data = get_data(ZServer)
@@ -128,7 +129,7 @@ def analyze(granularity, training_window, forecasting_interval, queue):
             logging.error("ZServer Connection Lost. Ending program.")
             exit(1)
 
-        print "getting data"
+        print new_data
 
         # Retrieve energy usage reading
         new_power = float(get_power(config_dict))
@@ -155,6 +156,12 @@ def analyze(granularity, training_window, forecasting_interval, queue):
         if (row_count % forecasting_interval == 0 and
             (row_count >= matrix_length or init_training)):
 
+            # Log current training windows as pickle files
+            with open(XLOG_FILENAME, 'w') as logfile:
+                pickle.dump(X, logfile)
+            with open(Xog_LOG_FILENAME, 'w') as logfile:
+                pickle.dump(X_og, logfile)
+
             print "training"
 
             # Unwrap the matrices (put the most recent data on the bottom)
@@ -167,12 +174,6 @@ def analyze(granularity, training_window, forecasting_interval, queue):
             w_opt, a_opt, b_opt, S_N = train(data, y)
 
             init_training = True
-
-            # Log current training windows as pickle files
-            with open(XLOG_FILENAME, 'w') as logfile:
-                pickle.dump(X, logfile)
-            with open(Xog_LOG_FILENAME, 'w') as logfile:
-                pickle.dump(X_og, logfile)
 
         # Make a prediction
         if init_training:

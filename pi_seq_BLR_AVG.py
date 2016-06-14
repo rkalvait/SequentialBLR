@@ -115,6 +115,8 @@ matrix_length = int(sys.argv[2])*60/int(sys.argv[1])
 forecasting_interval = int(sys.argv[3])*60/int(sys.argv[1])
 granularity_in_seconds = int(sys.argv[1])*60
 
+logging.info("Starting program with settings: %s %s %s" % (sys.argv[1], sys.argv[2], sys.argv[3]))
+
 # X is the matrix containing the training data
 Avg_over = 5
 X = np.zeros([matrix_length, num_sensors+1]) #sensors, energy reading
@@ -171,9 +173,12 @@ while True:
     # Retrieve sensor data from ZServer
     try:
         new_data = get_data(ZServer)
-    except:
+    except Exception:
+        print "KILLED"
         logging.error("ZServer Connection Lost. Ending analysis.")
         exit(1)
+        logging.error("Exit(1) failed to end program.")
+        print "exit failed"
 
     #get current energy reading
     cur_row = (row_count) % matrix_length
@@ -239,7 +244,7 @@ while True:
         target = X[(row_count) % matrix_length][num_sensors]
 
         #log the new result
-        logging.info("Target: " + str(target) + "\tPrediction: " + str(prediction))
+        logging.info("Target: " + str(target) + ",  Prediction: " + str(prediction))
 
         # Not currently used but will be necessary to flag user:
         error = (prediction-target)
