@@ -3,4 +3,4 @@ trainingWindow=1
 forecastingInterval=1
 
 inputFile=results.csv
-smoothingWindow=120
+smoothingWindow=15

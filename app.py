@@ -379,34 +379,41 @@ class App(Frame):
             p = Process(target=getDataFromFile, args=(csv, self.graph_queue))
             p.daemon = True
             p.start()
-            print "Created new processs ", p.pid
             self.after(100, self.checkGraphQueue)
 
 
     # Check the graph queue 
     def checkGraphQueue(self):
 
+        # Attempt to read data from the queue
         try:
             y_time, y_target, y_predict = self.graph_queue.get(block=False)
         except:
-            #self.after(100, self.checkGraphQueue)
-            print "Queue empty"
-        else:
-            # Update to most recent power reading
+            self.after(100, self.checkGraphQueue)
+            return
+
+        # Make sure there is valid data 
+        try:
             self.curpower = float(y_target[-1])
-
-            # Smooth data if requested
-            smoothingWin = int(self.settings['smoothingWindow'])
-            if smoothingWin > 0:
-                y_target = movingAverage(y_target, smoothingWin)
-                y_predict = movingAverage(y_predict, smoothingWin)
-
-            # Graph results
-            self.graph_status.configure(text="Graphing data. Please wait...")
-            self.graphFrame.graph(y_time, y_target, y_predict)
-
-            self.graph_status.configure(text="Graphing complete.")
+        except:
+            self.graph_status.configure(text="No new data to show.")
             self.graph_button.configure(state='normal', fg='black')
+            return
+
+        # Graph the new data
+                
+        # Smooth data if requested
+        smoothingWin = int(self.settings['smoothingWindow'])
+        if smoothingWin > 0:
+            y_target = movingAverage(y_target, smoothingWin)
+            y_predict = movingAverage(y_predict, smoothingWin)
+
+        # Graph results
+        self.graph_status.configure(text="Graphing data. Please wait...")
+        self.graphFrame.graph(y_time, y_target, y_predict)
+
+        self.graph_status.configure(text="Graphing complete.")
+        self.graph_button.configure(state='normal', fg='black')
 
 
 #############################  MAIN EXECUTION  #############################

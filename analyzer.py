@@ -157,9 +157,9 @@ def analyze(granularity, training_window, forecasting_interval, queue):
             (row_count >= matrix_length or init_training)):
 
             # Log current training windows as pickle files
-            with open(XLOG_FILENAME, 'w') as logfile:
+            with open(Xdata_LOG_FILENAME, 'wb') as logfile:
                 pickle.dump(X, logfile)
-            with open(Xog_LOG_FILENAME, 'w') as logfile:
+            with open(Xog_LOG_FILENAME, 'wb') as logfile:
                 pickle.dump(X_og, logfile)
 
             print "training"
@@ -180,7 +180,7 @@ def analyze(granularity, training_window, forecasting_interval, queue):
 
             # Prediction is dot product of data and weights
             x_test = X[X_row, :num_sensors]
-            prediction = np.inner[w_opt, x_test]
+            prediction = np.inner(w_opt, x_test)
             target = X[X_row, num_sensors]
 
             # Log the prediction and target results
@@ -195,7 +195,7 @@ def analyze(granularity, training_window, forecasting_interval, queue):
                 y_target = y_target[-matrix_length:]
                 y_predict = y_predict[-matrix_length:]
 
-            queue.put(y_time, y_target, y_predict) # app will eventually pick this up
+            queue.put((y_time, y_target, y_predict)) # app will eventually pick this up
 
             # Update severity metric and check for anomalies
             error = (prediction-target)
