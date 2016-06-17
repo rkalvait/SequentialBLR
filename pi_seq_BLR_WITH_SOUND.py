@@ -171,12 +171,16 @@ while True:
     # Retrieve sensor data from ZServer
     try:
         new_data = get_data(ZServer)
-    except:
+    except Exception:
         logging.error("ZServer Connection Lost. Ending analysis.")
         exit(1)
     #new_data[0] contains timestamp which is not used
     #new_data[0] gets replaced by Audio Sensor Data
-    new_data[0] = get_sound()    
+    try:
+        new_data[0] = get_sound()
+    except Exception:
+        logging.error("Audio Sensor Connection Lost. Ending analysis")
+        exit(1)    
 
     #get current energy reading
     cur_row = (row_count) % matrix_length
@@ -291,7 +295,7 @@ while True:
             Sn = Sn_1
         elif np.abs(Sn) > THRESHOLD and alert_counter == 1:
             Sn = 0
-            alert_counter = 0
+            #COMMENTED OUT ALERT_COUNTER
             logging.error("ANOMALY FOUND!")
             if __debug__:
                 print "ERROR: ANOMALY"

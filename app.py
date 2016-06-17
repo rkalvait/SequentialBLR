@@ -140,7 +140,8 @@ class App(Frame):
             
             if (granularity > 0 and
                 (self.curtime % (granularity * 60)) == 0):
-                self.checkGraphQueue()
+                #self.checkGraphQueue()
+                self.updateGraph()
 
         self.after(200, self.updateTime) # Repeat every x milliseconds
 

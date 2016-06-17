@@ -290,7 +290,7 @@ while True:
             Sn = Sn_1
         elif np.abs(Sn) > THRESHOLD and alert_counter == 1:
             Sn = 0
-            alert_counter = 0
+            ##COMMENTED OUT ALERT_COUNTER
             logging.error("ANOMALY FOUND!")
             if __debug__:
                 print "ERROR: ANOMALY"
