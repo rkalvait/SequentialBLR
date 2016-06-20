@@ -19,9 +19,6 @@ from algoRunFunctions import train, severityMetric, runnable
 from grapher import Grapher, CSV, DATE_FORMAT
 
 ##############################  PARAMETERS  ##############################
-THRESHOLD = 2
-
-
 ##############################  INITIALIZE  ##############################
 
 
@@ -64,15 +61,25 @@ if __name__ == '__main__':
     a_opt = 0
     b_opt = 0
     mu = 0; sigma = 1000
-    w, L = (.84, 3.719) # EWMA parameters. Other pairs can also be used, see paper
+    w, L = (.84, 3.719) #(seems med sensitive) EWMA parameters. Other pairs can also be used, see paper
+    #w, L = (0.53,3.714) #seems most  sensitive
+    #w, L = (1, 3.719) #Least sensitive
+    sigma_w = np.sqrt(w/(2-w))
+# Calculate variance of an fGN with self-similarity parameter H
+#sigma_w, est_err = np.sqrt(quad(integrand, -np.inf, np.inf, args=(w, 1, .7)))
+
+    THRESHOLD = L * sigma_w
+    print THRESHOLD
     Sn_1 = 0
 
     row_count = 0
     init_training = False
 
-    grapher = Grapher()
+    #grapher = Grapher()
     
     anomalies = np.zeros(30)
+    detected = set()
+    ground_truth = set()
 
 
     ##############################  ANALYZE  ##############################
@@ -83,9 +90,11 @@ if __name__ == '__main__':
         cur_time = line[0]
         cur_row = row_count % matrix_length
         X_data = line[1:]
-
-        if(row_count % 240 == 0):
-            print "Trying time: %s " % dt.datetime.fromtimestamp(cur_time).strftime(DATE_FORMAT)
+       
+        if(cur_time >= 1465038505 and cur_time <= 1465042060):
+            ground_truth.add(cur_time)
+        #if(row_count % 240 == 0):
+            #print "Trying time: %s " % dt.datetime.fromtimestamp(cur_time).strftime(DATE_FORMAT)
 
         # Update X
         X[cur_row] = X_data
@@ -147,17 +156,22 @@ if __name__ == '__main__':
             elif np.abs(Sn) > THRESHOLD and alert_counter == 1:
                 Sn = 0
                 anomalies[row_count % 30] = 1
-                print "ERROR: ANOMALY"
+                detected.add(cur_time)
+                #print "ERROR: ANOMALY"
             
             Sn_1 = Sn
 
-            
-            if (row_count % 30) == 0 and anomalies.sum() > 0:
-                grapher.graph_anomalies(cur_time, cur_time - 29*60, anomalies.sum())
-            
-            
-            
-            
+            A_SUM = anomalies.sum()
+            if A_SUM > 200:
+                print dt.datetime.fromtimestamp(cur_time).strftime(DATE_FORMAT)
+		print A_SUM 
+                #grapher.graph_anomalies(cur_time, cur_time - 29*60, anomalies.sum())
+                #print anomalies.sum()
+                            
+            if (row_count % 30 == 0) and A_SUM > 5:
+                print dt.datetime.fromtimestamp(cur_time).strftime(DATE_FORMAT)
+		print A_SUM 
+            '''
             if (row_count % forecasting_interval) == 0:
                 
                 #try:
@@ -166,7 +180,7 @@ if __name__ == '__main__':
                 
                 grapher.graph(y_time, y_target, y_predictions)
                 time.sleep(0.1)
-            
+            '''
         #Increment and loop
         row_count += 1
 
@@ -177,7 +191,15 @@ if __name__ == '__main__':
     results = CSV(outfile)
     results.clear()
     results.append(y_time, y_target, y_predictions)
+    
+    TP = (detected & ground_truth)
+    FP = float(len(detected - TP))
+    FN = float(len(ground_truth-TP))
 
+    TP = float(len(TP))
+    print "TP:{}, FP:{}, FN:{}".format(TP,FP,FN)
+    f1_scores = (2*TP)/((2*TP) + FP + FN)
+    print "{}".format(f1_scores)
     print "Ending analysis. See %s for results." % sys.argv[2]
     sys.exit(0)
-    grapher.close()
+   # grapher.close()
