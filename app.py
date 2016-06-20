@@ -7,19 +7,20 @@
 
 from Tkinter import * # GUI Library
 
+import os
+import sys
 import time
 import datetime as dt
 import math
 import numpy as np
-import os
-import sys
+import csv
 from multiprocessing import Process, Queue, Lock, freeze_support
-from Queue import Empty
+from Queue import Empty as QueueEmpty
 from collections import OrderedDict
 
-from grapher import Grapher, CSV, initWindow, time2string
+from grapher import GraphFrame, initWindow, readResults, DATE_FORMAT
 from algoRunFunctions import movingAverage
-from analyzer import analyze
+#from analyzer import analyze
 
 
 #############################  DEFINITIONS  #############################
@@ -29,17 +30,19 @@ settings_file = 'app/settings.txt'
 #############################  HELPER FUNCTIONS  #############################
 
 # Read from the CSV file and put the result in the queue
-def getDataFromFile(csv, queue):
-    queue.put((csv.read()))
+def getDataFromFile(csvfile, queue):
+    results = ['d']
+    results[1:] = readResults(csvfile)
+    queue.put(results)
 
-'''    
+#'''
 def analyze(a, b, c, queue):
     count = 0
     while True:
         print "analyzing:", count
         count += 1
         time.sleep(.5)
-'''     
+#'''     
 
 #############################  APPLICATION  #############################
 
@@ -62,8 +65,8 @@ class App(Frame):
         # which displays information and options for the analysis, and the
         # right frame contains the target/prediction and error graphs.
         
-        self.graphFrame = Grapher(master=self)
-        self.graphFrame.pack(side='right', fill='both', expand=True)
+        self.graph_frame = GraphFrame(master=self, queue=self.graph_queue)
+        self.graph_frame.pack(side='right', fill='both', expand=True)
         
         self.createDashFrame() # Contains the dashboard and settings
 
@@ -132,15 +135,16 @@ class App(Frame):
         # Update time
         if self.curtime != int(time.time()):
             self.curtime = int(time.time())
-            self.timer.configure(text=("Current time:\t" + time2string(time.time())))
-            self.power.configure(text=("Current power:\t%.3f kW" % self.curpower)) 
+            curtime_string = dt.datetime.now().strftime(DATE_FORMAT)
+            self.timer.configure(text=("Current time:\t" + curtime_string))
+            self.power.configure(text=("Current power:\t%.3f kW" % self.curpower))
 
             # Update graph
             granularity = int(self.settings['granularity'])
             
-            if (granularity > 0 and
-                (self.curtime % (granularity * 60)) == 0):
-                self.checkGraphQueue()
+            #if (granularity > 0 and
+            #    (self.curtime % (granularity * 60)) == 0):
+            #    #self.updateGraph()
 
         self.after(200, self.updateTime) # Repeat every x milliseconds
 
@@ -346,7 +350,7 @@ class App(Frame):
         self.algo_process.join()
         
         # Reset the queue (data may be corrupted)
-        self.graph_queue = Queue()
+        #self.graph_queue = Queue()
         
         self.analysis_status.configure(text="Analysis stopped.")
         self.analysis_button.configure(text="Start Analysis",
@@ -369,58 +373,37 @@ class App(Frame):
         infile = self.settings['inputFile']
 
         # Create new process to read the CSV file and schedule the grapher fn
-        csv = CSV(infile)
-        try:
-            csv.read()
-        except IOError:
+        if os.path.isfile(infile):
+        
+            '''
+            # Start a new process to read the data and dump to the queue
+            new_proc = Process(target=getDataFromFile, args=(infile, self.graph_queue))
+            new_proc.daemon = True
+            new_proc.start()
+            '''
+            
+            smoothing_win = self.settings['smoothingWindow']
+            y_time, y_target, y_predict = readResults(infile)
+            
+            if smoothing_win > 0:
+                y_target = movingAverage(y_target, smoothing_win)
+                y_predict = movingAverage(y_predict, smoothing_win)
+                
+            results = ['d', y_time, y_target, y_predict]
+            self.graph_queue.put(results)
+            
+            self.graph_status.configure(text="Graphing data now...")
+            self.graph_button.configure(state='normal', fg='black')
+            self.after(1000, lambda: self.graph_status.configure(text="Graphing complete."))
+
+        else:
             self.graph_status.configure(text="Error: \"%s\" does not exist" % infile)
             self.graph_button.configure(state='normal', fg='black')
-        else:                
-            p = Process(target=getDataFromFile, args=(csv, self.graph_queue))
-            p.daemon = True
-            p.start()
-            self.after(100, self.checkGraphQueue)
-
-
-    # Check the graph queue 
-    def checkGraphQueue(self):
-
-        # Attempt to read data from the queue
-        try:
-            y_time, y_target, y_predict = self.graph_queue.get(block=False)
-        except:
-            self.after(100, self.checkGraphQueue)
-            return
-
-        # Make sure there is valid data 
-        try:
-            self.curpower = float(y_target[-1])
-        except:
-            self.graph_status.configure(text="No new data to show.")
-            self.graph_button.configure(state='normal', fg='black')
-            return
-
-        # Graph the new data
-                
-        # Smooth data if requested
-        smoothingWin = int(self.settings['smoothingWindow'])
-        if smoothingWin > 0:
-            y_target = movingAverage(y_target, smoothingWin)
-            y_predict = movingAverage(y_predict, smoothingWin)
-
-        # Graph results
-        self.graph_status.configure(text="Graphing data. Please wait...")
-        self.graphFrame.graph(y_time, y_target, y_predict)
-
-        self.graph_status.configure(text="Graphing complete.")
-        self.graph_button.configure(state='normal', fg='black')
 
 
 #############################  MAIN EXECUTION  #############################
+def main():
 
-# Execute the main application
-if __name__ == '__main__':
-    freeze_support()
     root = Tk()
     initWindow(root, title="NextHome Energy Analysis")
 
@@ -433,3 +416,8 @@ if __name__ == '__main__':
         root.quit()
         root.destroy()
         
+        
+# Execute the main application
+if __name__ == '__main__':
+    freeze_support()
+    main()

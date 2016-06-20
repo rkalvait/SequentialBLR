@@ -1,6 +1,6 @@
 granularity=1
-trainingWindow=1
+trainingWindow=24
 forecastingInterval=1
 
-inputFile=results.csv
+inputFile=atman3_results.csv
 smoothingWindow=15
