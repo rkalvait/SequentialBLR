@@ -154,10 +154,11 @@ class GraphFrame(Tk.Frame):
     def graph(self, y_time, y_target, y_predict):
 
         # Time could be datetime string or UNIX timestamp
-        if isinstance(y_time[0], str):
+        try:
+            y_time = [dt.datetime.fromtimestamp(float(t)) for t in y_time]
+        except ValueError:
             y_time = [dt.datetime.strptime(t, DATE_FORMAT) for t in y_time]
-        elif isinstance(y_time[0], float):
-            y_time = [dt.datetime.fromtimestamp(t) for t in y_time]
+
     
         # Time should be UNIX timestamp. Convert to datetime
         #y_time = [dt.datetime.fromtimestamp(t) for t in y_time]
