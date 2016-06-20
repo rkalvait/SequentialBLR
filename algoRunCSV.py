@@ -20,9 +20,12 @@ from algoRunFunctions import train, severityMetric, runnable
 from grapher import Grapher, DATE_FORMAT, writeResults, print_stats
 
 ##############################  PARAMETERS  ##############################
+<<<<<<< HEAD
 
 
 
+=======
+>>>>>>> 68ab7145fc322d650cc7727393ba59d11a22dcfb
 ##############################  INITIALIZE  ##############################
 
 
@@ -65,6 +68,7 @@ if __name__ == '__main__':
     a_opt = 0
     b_opt = 0
     mu = 0; sigma = 1000
+<<<<<<< HEAD
     #w, L = (.84, 3.719) #(seems med sensitive) EWMA parameters. Other pairs can also be used, see paper
     #w, L = (0.53,3.714) #seems most  sensitive
     w, L = (1, 3.719) #Least sensitive
@@ -72,6 +76,15 @@ if __name__ == '__main__':
 # Calculate variance of an fGN with self-similarity parameter H
 #sigma_w, est_err = np.sqrt(quad(integrand, -np.inf, np.inf, args=(w, 1, .7)))
     alert_counter = 0
+=======
+    w, L = (.84, 3.719) #(seems med sensitive) EWMA parameters. Other pairs can also be used, see paper
+    #w, L = (0.53,3.714) #seems most  sensitive
+    #w, L = (1, 3.719) #Least sensitive
+    sigma_w = np.sqrt(w/(2-w))
+# Calculate variance of an fGN with self-similarity parameter H
+#sigma_w, est_err = np.sqrt(quad(integrand, -np.inf, np.inf, args=(w, 1, .7)))
+
+>>>>>>> 68ab7145fc322d650cc7727393ba59d11a22dcfb
     THRESHOLD = L * sigma_w
     print THRESHOLD
     Sn_1 = 0
@@ -84,10 +97,13 @@ if __name__ == '__main__':
     anomalies = np.zeros(30)
     detected = set()
     ground_truth = set()
+<<<<<<< HEAD
     
     # EWMA STUFF - REMOVE LATER
     last_avg = np.zeros(len(columns))
     alpha = 0.5
+=======
+>>>>>>> 68ab7145fc322d650cc7727393ba59d11a22dcfb
 
 
     ##############################  ANALYZE  ##############################
@@ -98,10 +114,13 @@ if __name__ == '__main__':
         cur_time = line[0]
         cur_row = row_count % matrix_length
         X_data = line[1:]
+<<<<<<< HEAD
         
         # EWMA STUFF - REMOVE LATER
         avg_data = last_avg + alpha * (X_data - last_avg)
         last_avg = avg_data
+=======
+>>>>>>> 68ab7145fc322d650cc7727393ba59d11a22dcfb
        
         if(cur_time >= 1465038505 and cur_time <= 1465042060):
             ground_truth.add(cur_time)
@@ -201,6 +220,7 @@ if __name__ == '__main__':
     infile.close()
         
     # Save data for later graphing
+<<<<<<< HEAD
     writeResults(outfile, y_time, y_target, y_predictions)
     
     f1_scores(detected, ground_truth)
@@ -210,3 +230,20 @@ if __name__ == '__main__':
     sys.exit(0)
     
     # grapher.close()
+=======
+    results = CSV(outfile)
+    results.clear()
+    results.append(y_time, y_target, y_predictions)
+    
+    TP = (detected & ground_truth)
+    FP = float(len(detected - TP))
+    FN = float(len(ground_truth-TP))
+
+    TP = float(len(TP))
+    print "TP:{}, FP:{}, FN:{}".format(TP,FP,FN)
+    f1_scores = (2*TP)/((2*TP) + FP + FN)
+    print "{}".format(f1_scores)
+    print "Ending analysis. See %s for results." % sys.argv[2]
+    sys.exit(0)
+   # grapher.close()
+>>>>>>> 68ab7145fc322d650cc7727393ba59d11a22dcfb

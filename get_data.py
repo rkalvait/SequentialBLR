@@ -11,16 +11,19 @@ import subprocess
 # Get the max volume from the microphone
 # sample_time is in seconds
 def get_sound(sample_time=1):
+    for x in xrange(10): 
+        #command = "ssh cherry '/usr/bin/arecord -D plughw:1,0 -d " + str(sample_time) + " -f S16_LE | /usr/bin/sox -t .wav - -n stat'"
+        command = "/usr/bin/arecord -D plughw:1,0 -d " + str(sample_time) + " -f S16_LE | /usr/bin/sox -t .wav - -n stat"
     
-    #command = "ssh cherry '/usr/bin/arecord -D plughw:1,0 -d " + str(sample_time) + " -f S16_LE | /usr/bin/sox -t .wav - -n stat'"
-    command = "/usr/bin/arecord -D plughw:1,0 -d " + str(sample_time) + " -f S16_LE | /usr/bin/sox -t .wav - -n stat"
-    
-    p = subprocess.Popen(command, bufsize=1, shell=True,  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    
-    for line in p.stdout:
-        if "Maximum amplitude" in line:
-            return float(line.split()[-1])
-
+        p = subprocess.Popen(command, bufsize=1, shell=True,  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        for line in p.stdout:
+            if "Maximum amplitude" in line:
+                return float(line.split()[-1])
+        print "Audio Sensor Timeout. Attempting to reconnect"
+        time.sleep(1)
+     
+    print "Audio Sensor Failed"
+    raise Exception
 
 # Get ZWave sensor data
 def get_data(z_server):
@@ -101,6 +104,5 @@ def get_power(config_info):
         # like row[0] for first data column, row[1] for second
         # data column, etc.
        final_power = final_power + max(row[0],0) + max(row[1],0) # + 4.068189 #offset shark_1 to zero
-       print "Shark_2, Shark_1, Final Power", row[0], row[1], final_power
     cnx.close()
     return final_power/Avg_over

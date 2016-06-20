@@ -142,9 +142,16 @@ class App(Frame):
             # Update graph
             granularity = int(self.settings['granularity'])
             
+<<<<<<< HEAD
             #if (granularity > 0 and
             #    (self.curtime % (granularity * 60)) == 0):
             #    #self.updateGraph()
+=======
+            if (granularity > 0 and
+                (self.curtime % (granularity * 60)) == 0):
+                #self.checkGraphQueue()
+                self.updateGraph()
+>>>>>>> 68ab7145fc322d650cc7727393ba59d11a22dcfb
 
         self.after(200, self.updateTime) # Repeat every x milliseconds
 
