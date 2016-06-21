@@ -5,11 +5,11 @@
 # Author(s):    apadin
 # Start Date:   6/8/2016
 
+
 ##############################  LIBRARIES  ##############################
-import datetime as dt
-import time
 import sys
-import json
+import time
+import datetime as dt
 import numpy as np
 import csv
 
@@ -49,7 +49,7 @@ def main():
     # Algorithm settings
     algo = Algo(granularity, training_window, forecasting_interval, len(columns)-1)
     
-    y_predictions = []
+    y_predict = []
     y_target = []
     y_time = []
     
@@ -60,7 +60,7 @@ def main():
     # The smaller value of alpha, the more averaging takes place
     # A value of 1.0 means no averaging happens
     last_avg = np.zeros(len(columns))
-    alpha = 0.5
+    alpha = 0.73
     
     detected = set()
     ground_truth = set()
@@ -89,7 +89,7 @@ def main():
         if prediction != None:
             y_time.append(cur_time)
             y_target.append(target)
-            y_predictions.append(float(prediction))
+            y_predict.append(float(prediction))
             
             if algo.checkSeverity(target, float(prediction)):
                 detected.add(cur_time)
@@ -101,10 +101,10 @@ def main():
     infile.close()
         
     # Save data for later graphing
-    writeResults(outfile, y_time, y_target, y_predictions)
+    writeResults(outfile, y_time, y_target, y_predict)
     
     f1_scores(detected, ground_truth)
-    print_stats(y_target, y_predictions)
+    print_stats(y_target, y_predict)
 
     print "Ending analysis. See %s for results." % sys.argv[2]
     
