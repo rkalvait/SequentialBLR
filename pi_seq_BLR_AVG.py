@@ -1,4 +1,4 @@
-#!/usr/bin/python -O
+#!/usr/bin/python -d
 
 #############################################
 ########## NextEnergy BLR Analysis ##########
@@ -99,8 +99,9 @@ a_opt = 0
 b_opt = 0
 mu = 0
 sigma = 1000
-THRESHOLD = 100000 #TODO, set this
 w, L = (.84, 3.719) # EWMA parameters. Other pairs can also be used, see paper
+sigma_w = np.sqrt(w/(2-w))
+THRESHOLD = L * sigma_w
 Sn_1 = 0
 init_training = False
 alert_counter = 0
