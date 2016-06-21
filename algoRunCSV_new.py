@@ -5,6 +5,7 @@
 # Author(s):    apadin
 # Start Date:   6/8/2016
 
+print "BLR Analysis: CSV"
 
 ##############################  LIBRARIES  ##############################
 import sys
@@ -65,7 +66,7 @@ def main():
     detected = set()
     ground_truth = set()
     
-    ##############################  ANALYZE  ##############################
+    ##############################  ANALYSIS  ##############################
     print "Beginning analysis..."
     for line in reader:
 
@@ -96,7 +97,10 @@ def main():
                 
         if(cur_time >= 1465038505 and cur_time <= 1465042060):
             ground_truth.add(cur_time)
-            
+         
+
+    ##############################  GRAPHING/STATS  ##############################
+         
     # Close the input file
     infile.close()
         

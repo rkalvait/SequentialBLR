@@ -5,13 +5,13 @@
 import mysql.connector
 import datetime as dt
 
-class Database:
+class Database(object):
 
     # Constructor
     # Reads config file and connects to database
-    def __init__(self):
+    def __init__(self, configfile = 'config.txt'):
         
-        with open('config.txt') as file:
+        with open(configfile) as file:
             for line in file:
                 if line.startswith('HOST'):
                     loc = line.find('=')

@@ -4,232 +4,178 @@
 # Author:       mjmor, dvorva, apadin
 # Start Date:   ??? before 4/30/2016
 
-print "Welcome to algoRun"
+print "BLR Analysis: Database"
 
-################################################################################
+##############################  LIBRARIES  ##############################
 
-print "Preparing libraries..."
-
+import sys
 import time
 import datetime as dt
-import random
-
-import grapher
-from database import Database
-
+import numpy as np
+import csv
 import json
 from urllib import urlopen
 
-import numpy as np
-import scipy as sp
-import scipy.stats
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-from datetime import date
-
-from tf_functions import tf_train
-
-from algoRunFunctions import movingAverage
-from algoRunFunctions import train
-from algoRunFunctions import runnable
-from algoRunFunctions import severityMetric
-
-from sklearn.metrics import recall_score
-from sklearn.metrics import precision_score
-from sklearn.metrics import f1_score
-
-import mysql.connector
-
-################################################################################
-
-print "Loading configuration settings..."
-
-y_predictions = []
-y_target = []
-y_time = []
-w_opt = []
-a_opt = 0
-b_opt = 0
-rowCount = 0
-initTraining = False
-notRunnableCount = 0
-mu = 0; sigma = 1000
-w, L = (.84, 3.719) # EWMA parameters. Other pairs can also be used, see paper
-Sn_1 = 0
-p_array = []
-
-# Initialize database
-database = Database()
-
-print "Reading configuration files..."
-with open('smartDriver.json') as data_file:
-    jsonDataFile = json.load(data_file)
-
-#Period: length of forecasting window, in hours
-#Granularity: time between data, in minutes
-matrixLength = int(jsonDataFile["windowSize"])*60/int(jsonDataFile["granularity"])
-forecastingInterval = int(jsonDataFile["forecastingInterval"])*60/int(jsonDataFile["granularity"])
-
-inputIDs = jsonDataFile["idSelection"]
-inputIDs = inputIDs.split(',')
-idArray = []
-#Create a list of ID numbers, given input.
-#interprets 1-3 to include 1,2,3.
-for selection in inputIDs:
-    if '-' not in selection:
-        idArray.append(int(selection))
-    else:
-        bounds = selection.split('-')
-        for index in range(int(bounds[0]), int(bounds[1])+1):
-            idArray.append(index)
-
-#Remove duplicates:
-idArray = list(set(idArray))
-
-#Sort the list.
-idArray.sort()
-
-#Fill columns with the corresponding column, given IDarray.
-#Invariant: the ID in idArray at a given index should correspond
-#           to the columnName at the same index in the column list.
-startTimeList = []
-endTimeList = []
-columns = []
-lastData = [] #Data point of last valid timestamp - init garbage
-lastDataTime = [] #Timestamp of last valid timestamp - init very old [TODO]
-shouldBeRounded = []
-countNoData = [] #fordebug
-severityArray = []
-for sensorID in idArray:
-    if "circuit" in jsonDataFile["data"][sensorID-1]["columnName"]:
-        shouldBeRounded.append(1)
-    else:
-        shouldBeRounded.append(0)
-    columns.append(jsonDataFile["data"][sensorID-1]["columnName"])
-    startTimeList.append(jsonDataFile["data"][sensorID-1]["startTime"])
-    endTimeList.append(jsonDataFile["data"][sensorID-1]["endTime"])
-    lastDataTime.append(dt.datetime.min)
-    lastData.append(-1)
-    countNoData.append(0) #fordebug
-
-countNoData.append(0) #fordebug
+from algorithm import Algo, f1_scores
+from grapher import DATE_FORMAT, writeResults, print_stats
+from database import Database
 
 
-# Add total energy consumption column:
-columns.append(jsonDataFile["totalConsum"]);
-lastData.append(-1)
-shouldBeRounded.append(1)
-lastDataTime.append(dt.datetime.min)
+##############################  PARAMETERS  ##############################
+CONFIG_FILE = 'config.txt'
 
-# Find latest start time, earliest end time.
-startTime = dt.datetime.strptime(max(startTimeList), "%Y-%m-%d %H:%M:%S")
-endTime = dt.datetime.strptime(min(endTimeList), "%Y-%m-%d %H:%M:%S")
 
-if(int(jsonDataFile["specifyTime"])):
-   startTime = dt.datetime.strptime(jsonDataFile["beginTime"], "%Y-%m-%d %H:%M:%S")
-   endTime = dt.datetime.strptime(jsonDataFile["endTime"], "%Y-%m-%d %H:%M:%S")
+##############################  FUNCTIONS  ##############################
 
-granularityInSeconds = int(jsonDataFile["granularity"])*60
+# Determine start and end times for all data
+# Return result as datetime objects
+def getStartEndTimes(id_list):
 
-# Input data matrix
-X =  np.zeros([matrixLength, len(columns)], np.float32)
-X[:, -1] = np.ones([matrixLength], np.float32)
-X = np.concatenate((X, np.zeros([matrixLength, 1], np.float32)), axis=1)
+    # Get start and end times for each feature
+    start_list = []
+    end_list = []
+    for id in id_list:
+        start_list.append(jsonDataFile['data'][id-1]['startTime'])
+        end_list.append(jsonDataFile['data'][id-1]['endTime'])
 
-grapher.clear_csv()
+    # Find latest start time, earliest end time
+    start_time = dt.datetime.strptime(max(start_list), DATE_FORMAT)
+    end_time = dt.datetime.strptime(min(end_list), DATE_FORMAT)
+    return start_time, end_time
 
-################################################################################
 
-print "Beginning analysis..."
+# Return a list of ID numbers, given input
+def getListIDs(inputIDs):
 
-while startTime < endTime:
-
-    currentRow = (rowCount % matrixLength)
-
-    #Some of the data seems bad on the 31st - too many NULLS
-    if startTime > dt.datetime(2012, 5, 30) and startTime < dt.datetime(2012, 6, 1):
-        startTime = dt.datetime(2012, 6, 1)
-
-    if(rowCount % 240 == 0):
-        print "trying time: %s " % startTime
-
-    #Execute the query:
-    next_data = database.get_avg_data(startTime, startTime + dt.timedelta(0, granularityInSeconds), columns)
-    next_data = [max(0, data) for data in next_data] # remove 'nan' and negative
-
-    #X[currentRow, :-1] = next_data[:-1] #Sensor data
-    X[currentRow, :-2] = next_data[:-1] #Sensor data
-    X[currentRow, -1] = next_data[-1] #Power data
-
-    # Time to train:
-    if(rowCount % forecastingInterval == 0 and rowCount >= matrixLength):
-        data = X[(currentRow+1):, :-1]
-        data = np.concatenate((data, X[:(currentRow+1), :-1]), axis=0)
-        y = X[(currentRow+1):, -1]
-        y = np.concatenate((y, X[:(currentRow+1), -1]), axis=0)
-
-        if(initTraining or runnable(data) > 0.5):
-
-            # For BLR
-            w_opt, a_opt, b_opt, S_N = train(data, y)
-
-            # For TF train            
-            #w_opt, a_opt, b_opt, S_N = tf_train(data, y)
-
-            #print w_opt
-
-            initTraining = 1
-
+    inputIDs = inputIDs.split(',')
+    id_list = []
+    
+    # Interpret 1-3 to include 1,2,3
+    for selection in inputIDs:
+        if '-' not in selection:
+            id_list.append(int(selection))
         else:
-            notRunnableCount += 1
-            if(notRunnableCount > 5):
-                print "Data not runnable too many times! Exiting..."
+            bounds = selection.split('-')
+            for index in range(int(bounds[0]), int(bounds[1])+1):
+                id_list.append(index)
 
-    # If enough data has been gathered, make a prediction
-    if(initTraining):
-        x_n = X[currentRow, :-1]
-        prediction = max(0, np.inner(w_opt,x_n))
+    return id_list
+    
+    
 
-        if prediction > 12000:
-            print "WARNING: IMPOSSIBLE PREDICTION. Correcting now..."
-            prediction = y_predictions[-1]
 
-        y_predictions.append(prediction)
-        y_target.append(X[currentRow, -1])
-        y_time.append(startTime)
+##############################  MAIN  ##############################
+def main():
 
-        error = y_predictions[-1] - y_target[-1]
-        sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
+    # Retreive settings from JSON settings file
+    with open('smartDriver.json') as data_file:
+        jsonDataFile = json.load(data_file)
 
-        # Catching pathogenic cases where variance (ie, sigma) gets too small
-        sigma = max(sigma, 1.0)
+    granularity = int(jsonDataFile['granularity'])
+    window_size = int(jsonDataFile['windowSize'])
+    forecasting_interval = int(jsonDataFile['forecastingInterval'])
+    
+    print ("\nStarting analysis on database with settings %d %d %d..." 
+           % (granularity, training_window, forecasting_interval))
+           
+    granularity_in_seconds = granularity * 60
+           
+    # Initialize database
+    database = Database(CONFIG_FILE)
+           
+    # Get the list of feature numbers
+    id_list = getListIDs(jsonDataFile["idSelection"])
 
-        # Update severity metric
-        mu = mu; sigma = sigma
-        Sn, Zn = severityMetric(error, mu, sigma, w, Sn_1)
-        severityArray.append(Sn)
-        #Zscore_array[n] = Zn
-        Sn_1 = Sn
-        p = 1 - sp.stats.norm.cdf(error, mu, sigma)
-        p_array.append(p)
+    id_list = list(set(id_list)) # Remove duplicates
+    id_list.sort()
 
-    # If not, no prediction is made
+    # Determine the range of times to pull data from    
+    # If the user specified a timeframe, use that
+    if(int(jsonDataFile["specifyTime"])):
+       start_time = dt.datetime.strptime(jsonDataFile["beginTime"], DATE_FORMAT)
+       end_time = dt.datetime.strptime(jsonDataFile["endTime"], DATE_FORMAT)
+
+    # Otherwise, find the largest timeframe for which each feature has data
     else:
-        severityArray.append(0)
+        start_time, end_time = getStartEndTimes(id_list)
+        
+    # Get the list of column headers for the features
+    columns = []
+    for id in id_list:
+        columns.append(jsonDataFile['data'][id-1]['columnName'])
+        
+    columns.append(jsonDataFile['totalConsum'])
+    
+    # Algorithm settings
+    algo = Algo(granularity, training_window, forecasting_interval, len(columns)-1)
+    
+    y_predict = []
+    y_target = []
+    y_time = []
+    
+    count = 0
+    
+    # EWMA additions
+    # alpha is adjustable on a scale of (0, 1]
+    # The smaller value of alpha, the more averaging takes place
+    # A value of 1.0 means no averaging happens
+    last_avg = np.zeros(len(columns))
+    alpha = 1.0
+    
+    detected = set()
+    ground_truth = set()
 
-    #Increment and loop
-    startTime += dt.timedelta(0,granularityInSeconds)
-    rowCount += 1
+    ##############################  ANALYSIS  ##############################
+    print "Beginning analysis..."
+    while start_time < end_time:
 
-    # Save the data for later graphing
-    if(rowCount % forecastingInterval == 0 and initTraining):        
-        grapher.write_csv(y_target[-forecastingInterval:],
-                          y_predictions[-forecastingInterval:],
-                          y_time[-forecastingInterval:])
+        # FOR SMART* ONLY
+        # Some of the data seems bad on the 31st - too many NULLS
+        if (start_time > dt.datetime(2012, 5, 30) and 
+            start_time < dt.datetime(2012, 6, 1)):
+            
+            start_time = dt.datetime(2012, 6, 1)
+
+        if(count % 240 == 0):
+            print "trying time: %s " % start_time
+            
+        count += 1
+
+        #Execute the query:
+        stop_time = start_time + dt.timedelta(0, granularity_in_seconds)
+        new_data = database.get_avg_data(start_time, stop_time, columns)
+        
+        new_data = [max(0, data) for data in next_data] # remove 'nan' and negative
+
+        # EWMA calculation
+        avg_data = last_avg + alpha * (new_data - last_avg)
+        last_avg = avg_data
+
+        target = float(avg_data[-1])
+        prediction = algo.run(avg_data) # Magic!
+        
+        if prediction != None:
+            y_time.append(start_time)
+            y_target.append(target)
+            y_predict.append(float(prediction))
+            
+            if algo.checkSeverity(target, float(prediction)):
+                detected.add(start_time)
+
+        start_time = stop_time #Increment and loop
 
 
-################################################################################
+    ##############################  GRAPHING/STATS  ##############################
 
-print "Analysis complete."
+    # Save data for later graphing
+    writeResults(outfile, y_time, y_target, y_predict)
+    
+    f1_scores(detected, ground_truth)
+    print_stats(y_target, y_predict)
 
-grapher.print_stats(y_target, y_predictions, 120)
+    print "Ending analysis. See %s for results." % sys.argv[2]
+    
+    
+# If run as main:
+if __name__ == "__main__":
+    main()

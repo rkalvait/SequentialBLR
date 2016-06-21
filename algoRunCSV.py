@@ -63,8 +63,8 @@ if __name__ == '__main__':
     b_opt = 0
     mu = 0; sigma = 1000
     #w, L = (0.53,3.714) # Most sensitive
-    w, L = (.84, 3.719) # Medium sensitive
-    #w, L = (1, 3.719)   # Least sensitive
+    #w, L = (.84, 3.719) # Medium sensitive
+    w, L = (1, 3.719)   # Least sensitive
     sigma_w = np.sqrt(w/(2-w))
     THRESHOLD = L * sigma_w
     print THRESHOLD
