@@ -37,7 +37,7 @@ import json
 import logging
 import time
 import numpy as np
-from grapher import CSV, DATE_FORMAT, time2string
+from grapher import CSV, DATE_FORMAT
 from algoRunFunctions import train, severityMetric
 from get_data import get_data, get_power
 from zwave_api import ZWave
