@@ -191,7 +191,7 @@ class Algo(object):
     # Make a prediction based on new data
     def prediction(self, new_data):
         assert len(new_data) == len(self.w_opt)
-        return np.inner(new_data, self.w_opt)
+        return max(0, np.inner(new_data, self.w_opt))
 
 
 #############################  FUNCTIONS  #############################

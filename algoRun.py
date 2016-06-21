@@ -14,8 +14,9 @@ import time
 import datetime as dt
 import random
 
-import grapher
 from database import Database
+from grapher import writeResults, DATE_FORMAT, print_stats
+from algorithm import f1_scores
 
 import json
 from urllib import urlopen
@@ -44,7 +45,8 @@ import mysql.connector
 
 print "Loading configuration settings..."
 
-y_predictions = []
+outfile = 'results.csv'
+y_predict = []
 y_target = []
 y_time = []
 w_opt = []
@@ -133,10 +135,11 @@ granularityInSeconds = int(jsonDataFile["granularity"])*60
 
 # Input data matrix
 X =  np.zeros([matrixLength, len(columns)], np.float32)
-X[:, -1] = np.ones([matrixLength], np.float32)
-X = np.concatenate((X, np.zeros([matrixLength, 1], np.float32)), axis=1)
+#X[:, -1] = np.ones([matrixLength], np.float32)
+#X = np.concatenate((X, np.zeros([matrixLength, 1], np.float32)), axis=1)
 
-grapher.clear_csv()
+
+print "Columns:", len(columns)
 
 ################################################################################
 
@@ -157,8 +160,8 @@ while startTime < endTime:
     next_data = database.get_avg_data(startTime, startTime + dt.timedelta(0, granularityInSeconds), columns)
     next_data = [max(0, data) for data in next_data] # remove 'nan' and negative
 
-    #X[currentRow, :-1] = next_data[:-1] #Sensor data
-    X[currentRow, :-2] = next_data[:-1] #Sensor data
+    X[currentRow, :-1] = next_data[:-1] #Sensor data
+    #X[currentRow, :-2] = next_data[:-1] #Sensor data
     X[currentRow, -1] = next_data[-1] #Power data
 
     # Time to train:
@@ -190,15 +193,17 @@ while startTime < endTime:
         x_n = X[currentRow, :-1]
         prediction = max(0, np.inner(w_opt,x_n))
 
+        '''
         if prediction > 12000:
             print "WARNING: IMPOSSIBLE PREDICTION. Correcting now..."
-            prediction = y_predictions[-1]
+            prediction = y_predict[-1]
+        '''
 
-        y_predictions.append(prediction)
+        y_predict.append(prediction)
         y_target.append(X[currentRow, -1])
         y_time.append(startTime)
 
-        error = y_predictions[-1] - y_target[-1]
+        error = y_predict[-1] - y_target[-1]
         sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
 
         # Catching pathogenic cases where variance (ie, sigma) gets too small
@@ -221,15 +226,13 @@ while startTime < endTime:
     startTime += dt.timedelta(0,granularityInSeconds)
     rowCount += 1
 
-    # Save the data for later graphing
-    if(rowCount % forecastingInterval == 0 and initTraining):        
-        grapher.write_csv(y_target[-forecastingInterval:],
-                          y_predictions[-forecastingInterval:],
-                          y_time[-forecastingInterval:])
-
 
 ################################################################################
 
-print "Analysis complete."
+# Save data for later graphing
+writeResults(outfile, y_time, y_target, y_predict)
+    
+#f1_scores(detected, ground_truth)
+print_stats(y_target, y_predict)
 
-grapher.print_stats(y_target, y_predictions, 120)
+print "Ending analysis. See %s for results." % 'results file'

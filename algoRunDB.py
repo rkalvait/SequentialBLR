@@ -23,7 +23,7 @@ from database import Database
 
 ##############################  PARAMETERS  ##############################
 CONFIG_FILE = 'config.txt'
-
+outfile = 'results.csv'
 
 ##############################  FUNCTIONS  ##############################
 
@@ -72,7 +72,7 @@ def main():
         jsonDataFile = json.load(data_file)
 
     granularity = int(jsonDataFile['granularity'])
-    window_size = int(jsonDataFile['windowSize'])
+    training_window = int(jsonDataFile['windowSize'])
     forecasting_interval = int(jsonDataFile['forecastingInterval'])
     
     print ("\nStarting analysis on database with settings %d %d %d..." 
@@ -98,6 +98,8 @@ def main():
     # Otherwise, find the largest timeframe for which each feature has data
     else:
         start_time, end_time = getStartEndTimes(id_list)
+
+    print "Start, end: ", start_time, end_time
         
     # Get the list of column headers for the features
     columns = []
@@ -105,7 +107,9 @@ def main():
         columns.append(jsonDataFile['data'][id-1]['columnName'])
         
     columns.append(jsonDataFile['totalConsum'])
-    
+   
+    print "Columns:", len(columns)
+ 
     # Algorithm settings
     algo = Algo(granularity, training_window, forecasting_interval, len(columns)-1)
     
@@ -145,7 +149,9 @@ def main():
         stop_time = start_time + dt.timedelta(0, granularity_in_seconds)
         new_data = database.get_avg_data(start_time, stop_time, columns)
         
-        new_data = [max(0, data) for data in next_data] # remove 'nan' and negative
+        new_data = np.asarray([max(0, data) for data in new_data]) # remove 'nan' and negative
+	for data in new_data:
+            if data < 0: print "NEGATIVE"
 
         # EWMA calculation
         avg_data = last_avg + alpha * (new_data - last_avg)
@@ -170,10 +176,10 @@ def main():
     # Save data for later graphing
     writeResults(outfile, y_time, y_target, y_predict)
     
-    f1_scores(detected, ground_truth)
+    #f1_scores(detected, ground_truth)
     print_stats(y_target, y_predict)
 
-    print "Ending analysis. See %s for results." % sys.argv[2]
+    print "Ending analysis. See %s for results." % outfile
     
     
 # If run as main:
