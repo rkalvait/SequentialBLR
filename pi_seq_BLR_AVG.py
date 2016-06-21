@@ -266,7 +266,6 @@ while True:
         else:
             csv.append(y_time[-1:], y_target[-1:], y_predict[-1:])
 
-	#print "Time:", time2string(cur_time)
 	print "Target:", target, 
 	print "Prediction:", prediction
         if (actual_prediction < 0):

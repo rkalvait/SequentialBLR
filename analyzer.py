@@ -13,7 +13,7 @@ import sys
 import json
 import logging
 import numpy as np
-from grapher import time2string, DATE_FORMAT
+from grapher import DATE_FORMAT
 from algoRunFunctions import train, severityMetric
 from get_data import get_data, get_power
 from zwave_api import ZWave
@@ -102,8 +102,6 @@ def analyze(granularity, training_window, forecasting_interval, queue):
         # Record the time of the next iteration
         goal_time += granularity_in_seconds
         
-        print "Sleeping until " + time2string(goal_time)
-
         # Wake up periodically to check time and kill_flag
         while goal_time > time.time():
             time.sleep(0.1)

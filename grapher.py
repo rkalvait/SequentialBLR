@@ -36,12 +36,6 @@ ICON_FILE = 'app/merit_icon.ppm'
 
 ##############################  HELPER FUNCTIONS  ##############################
 
-'''
-# Wrapper function for consistent time formatting
-def time2string(timestamp):
-    return dt.datetime.fromtimestamp(timestamp).strftime(DATE_FORMAT)
-'''
-
 # Give the window a title and icon, destroy cleanly when X is pressed
 def initWindow(window, title=" ", root=False):
     window.wm_title(title)                              # Change title
@@ -289,7 +283,7 @@ class CSV:
         assert(len(y_time) == len(y_predict))
 
         # y_time should be a list of UNIX timestamps
-        y_time = [time2string(float(t)) for t in y_time]
+        y_time = [dt.datetime.fromtimestamp(float(t)).strftime(DATE_FORMAT) for t in y_time]
         y_target = [str(t) for t in y_target]
         y_predict = [str(t) for t in y_predict]
 

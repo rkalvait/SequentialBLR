@@ -37,7 +37,7 @@ import json
 import logging
 import time
 import numpy as np
-from grapher import CSV, DATE_FORMAT, time2string
+from grapher import CSV, DATE_FORMAT
 from algoRunFunctions import train, severityMetric
 from get_data import get_data, get_power, get_sound
 from zwave_api import ZWave
@@ -271,7 +271,6 @@ while True:
         else:
             csv.append(y_time[-1:], y_target[-1:], y_predict[-1:])
 
-	#print "Time:", time2string(cur_time)
 	print "Target:", target, 
 	print "Prediction:", prediction
         if (actual_prediction < 0):
