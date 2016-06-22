@@ -14,18 +14,12 @@ from grapher import DATE_FORMAT
 from algoRunFunctions import train, severityMetric, runnable
 
 
-
-
-
-
 ##### PARAMETERS #####
 X_BACKUP_FILENAME = 'X_backup.bak'
 RESULTS_FILENAME = 'results.csv'
 
 LOG_FILENAME = '/var/log/sequential_predictions.log'
 LOG_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-
-
 
 
 class Algo(object):
@@ -210,9 +204,21 @@ def f1_scores(detected, ground_truth):
     TP = float(len(TP))
     print "TP: {}, FP: {}, FN: {}".format(TP,FP,FN)
 
-    precision = TP / (TP + FP)
-    recall = TP / (TP + FN)
-    f1_score = (2*TP)/((2*TP) + FP + FN)
+    try:
+        precision = TP / (TP + FP)
+    except ZeroDivisionError:
+        precision = float('nan')
+
+    try:
+        recall = TP / (TP + FN)
+    except ZeroDivisionError:
+        recall = float('nan')
+
+    try:
+        f1_score = (2*TP)/((2*TP) + FP + FN)
+    except ZeroDivisionError:
+        f1_score = float('nan')
+
     print "Precision: {}\nRecall: {}\nF1 Score: {}".format(precision, recall, f1_score)
     
     return precision, recall, f1_score

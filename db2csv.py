@@ -133,6 +133,8 @@ def main():
     outfile = open(outfile, 'wb')
     writer = csv.writer(outfile)
 
+    last = np.zeros(len(columns))
+
     ##############################  ANALYSIS  ##############################
     print "Beginning analysis..."
     while start_time < end_time:
@@ -155,7 +157,14 @@ def main():
         
         new_data = np.asarray([max(0, data) for data in new_data]) # remove 'nan' and negative
         
-        new_data.insert(0, start_time)
+        if new_data[2] == 0:
+            new_data[1] = last[1]
+            new_data[2] = last[2]
+        else:
+            last = new_data
+
+        start_time = time.mktime(start_time.timetuple())
+        new_data = np.insert(new_data, 0,  start_time)
         
         writer.writerow(new_data)
 
