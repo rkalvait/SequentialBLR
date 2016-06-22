@@ -45,7 +45,7 @@ def main():
     reader = csv.reader(infile)
     columns = reader.next()[1:]
     
-    print "The following features were found:", columns
+    #print "The following features were found:", columns
 
     # Algorithm settings
     algo = Algo(granularity, training_window, forecasting_interval, len(columns)-1)
@@ -61,7 +61,8 @@ def main():
     # The smaller value of alpha, the more averaging takes place
     # A value of 1.0 means no averaging happens
     last_avg = np.zeros(len(columns))
-    alpha = 0.73
+    alpha = 1
+    print "Alpha: %.3f" % alpha
     
     detected = set()
     ground_truth = set()

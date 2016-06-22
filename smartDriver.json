@@ -2,11 +2,11 @@
 	"granularity": "1",
 	"windowSize": "24",
   "forecastingInterval": "1",
-  "idSelection": "1-25, 27-30",
+  "idSelection": "8,27,28,40-42",
   "totalConsum": "circuitGrid",
   "specifyTime": "1",
-  "beginTime" : "2012-05-25 00:00:00",
-  "endTime": "2012-05-30 00:00:00",
+  "beginTime" : "2012-06-02 00:00:00",
+  "endTime": "2012-06-11 00:00:00",
   "data": [
     {
      "idNumber" : "1",
