@@ -39,17 +39,19 @@ class MyCanvas(FigureCanvas):
     # Constructor
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
-        FigureCanvas.__init__(self, self.fig)
+        super(MyCanvas, self).__init__(self.fig)
+        
         self.setParent(parent)
 
         self.graph = self.fig.add_subplot(111)
-        self.graph.hold(False) # Clear the graph after every call to plot
+        self.clear()
 
-        FigureCanvas.setSizePolicy(self,
-                                   QtGui.QSizePolicy.Expanding,
-                                   QtGui.QSizePolicy.Expanding)
+        self.setSizePolicy(QtGui.QSizePolicy.Expanding,
+                           QtGui.QSizePolicy.Expanding)
 
         FigureCanvas.updateGeometry(self)
+        self.fig.tight_layout()
+        self.draw()
 
     # Update the graph using the given data
     # 'times' should be datetime objects
@@ -61,17 +63,39 @@ class MyCanvas(FigureCanvas):
         ymin = 0
         ymax = max(power) * 1.1
 
-        self.graph.plot(times, power, 'r')
+        #self.graph.plot(times, power, 'r')
+        self.power_line.set_data(times, power)
         self.graph.set_xlim(xmin, xmax)
         self.graph.set_ylim(ymin, ymax)
-        self.graph.set_ylabel("Power (kW)")
-        self.graph.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M:%S"))
-        self.graph.xaxis.set_major_locator(LinearLocator(numticks=6))
-        plt.setp(self.graph.get_xticklabels(), rotation=10)
 
         self.fig.tight_layout()
         self.draw()
+        
+    # Add a horizontal color span to the graph
+    # 'start' should be a datetime (preferably in range)
+    # 'duration' should be the width of the span
+    # 'color' should be a string describing an acceptable color value
+    def colorSpan(self, start, duration, color):
+        end = start + dt.timedelta(minutes=duration)
+        self.graph.axvspan(xmin=start, xmax=end, color=color, alpha=0.2)
+        self.draw()
 
+    # Clear current graph, including line and 
+    def clear(self):
+        self.graph.cla()
+        zero = dt.datetime.fromtimestamp(0)
+        one = dt.datetime.fromtimestamp(1)
+        x, y = [zero, one], [-1, -1]
+        self.graph.set_xlim(zero, one)
+        self.graph.set_ylim(0, 1)
+        self.power_line, = self.graph.plot(x, y, color='red')
+        self.graph.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M:%S"))
+        self.graph.xaxis.set_major_locator(LinearLocator(numticks=6))
+        plt.setp(self.graph.get_xticklabels(), rotation=10)
+        self.graph.set_ylabel("Power (kW)")
+        self.fig.tight_layout()
+        self.draw()
+        
 
 # Main application window - creates the widgets and the window
 class MainWindow(QtGui.QMainWindow):
@@ -131,7 +155,7 @@ class MainWindow(QtGui.QMainWindow):
 
         browse_button = QtGui.QPushButton("Browse...")
         browse_button.clicked.connect(self.browseFile)
-        load_button = QtGui.QPushButton("Load")
+        load_button = QtGui.QPushButton("Reset")
         load_button.clicked.connect(self.loadFile)
         save_button = QtGui.QPushButton("Save")
         save_button.clicked.connect(self.saveFile)
@@ -156,15 +180,18 @@ class MainWindow(QtGui.QMainWindow):
     # Search the file system for the desired input file
     def browseFile(self):
         self.old_filename = str(QtGui.QFileDialog.getOpenFileName())
-        self.new_filename = self.old_filename.rstrip('.csv')
-        self.new_filename += '_attacked.csv'
-        self.edit_old.setText(self.old_filename)
-        self.edit_new.setText(self.new_filename)
+        if self.old_filename != '':
+            self.new_filename = self.old_filename.rstrip('.csv')
+            self.new_filename += '_attacked.csv'
+            self.edit_old.setText(self.old_filename)
+            self.edit_new.setText(self.new_filename)
+            self.loadFile()
         
     # Load original data from the file given by old_filename
     # Always grabs the first and last columns in the file
     def loadFile(self):
         if self.checkFilename(self.old_filename):
+            self.canvas.clear()
             try:
                 file = open(self.old_filename, 'rb')
             except:
@@ -189,6 +216,8 @@ class MainWindow(QtGui.QMainWindow):
                     
                 self.canvas.updateGraph(self.times, self.old_power)
                 self.new_power = [item for item in self.old_power]
+                self.statusBar().showMessage(
+                    "Graphing complete.", 5000)
                 
     # Save the new data in the file given by new_filename
     def saveFile(self):
@@ -224,16 +253,20 @@ class MainWindow(QtGui.QMainWindow):
     # Open the attack dialog and get the inputs
     # Add the attack and re graph
     def startAttack(self):
-        dialog = AttackDialog(self)
-        if dialog.exec_():
-            startdate, duration, intensity = dialog.get_info()
+        if self.checkFilename(self.old_filename):
+            dialog = AttackDialog(self)
+            if dialog.exec_():
+                startdate, duration, intensity = dialog.get_info()
+            else:
+                return
+            self.addAttack(startdate, duration, intensity)
+            self.canvas.updateGraph(self.times, self.new_power)
+            self.canvas.colorSpan(startdate, duration, 'red')
+            self.statusBar().showMessage(
+                "Graphing complete.", 5000)
         else:
-            return
-        self.addAttack(startdate, duration, intensity)
-        self.canvas.updateGraph(self.times, self.new_power)
-        self.statusBar().showMessage(
-            "Graphing complete.", 5000)
-        
+            pass
+            
     # This is where the magic happens
     # Add an attack to new_power
     def addAttack(self, startdate, duration, intensity):
@@ -244,6 +277,8 @@ class MainWindow(QtGui.QMainWindow):
                 enddate < self.times[0]):
             self.statusBar().showMessage(
                 "Error: attack out of range", 5000)
+            raise ValueError("Attack out of range")
+            
         for index in xrange(len(self.times)):
             if self.times[index] > enddate:
                 return
