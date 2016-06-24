@@ -231,11 +231,19 @@ class MainWindow(QtGui.QMainWindow):
             return
         self.addAttack(startdate, duration, intensity)
         self.canvas.updateGraph(self.times, self.new_power)
+        self.statusBar().showMessage(
+            "Graphing complete.", 5000)
         
     # This is where the magic happens
     # Add an attack to new_power
     def addAttack(self, startdate, duration, intensity):
         enddate = startdate + dt.timedelta(minutes=duration)
+
+        # Verify that the times are usable
+        if (startdate > self.times[-1] or
+                enddate < self.times[0]):
+            self.statusBar().showMessage(
+                "Error: attack out of range", 5000)
         for index in xrange(len(self.times)):
             if self.times[index] > enddate:
                 return
