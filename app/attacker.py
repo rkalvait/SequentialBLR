@@ -51,7 +51,6 @@ class MyCanvas(FigureCanvas):
 
         FigureCanvas.updateGeometry(self)
 
-
     # Update the graph using the given data
     # 'times' should be datetime objects
     # 'power' should be in Watts
@@ -66,7 +65,7 @@ class MyCanvas(FigureCanvas):
         self.graph.set_xlim(xmin, xmax)
         self.graph.set_ylim(ymin, ymax)
         self.graph.set_ylabel("Power (kW)")
-        self.graph.xaxis.set_major_formatter(DateFormatter("%m-%d %H:%M:%S"))
+        self.graph.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M:%S"))
         self.graph.xaxis.set_major_locator(LinearLocator(numticks=6))
         plt.setp(self.graph.get_xticklabels(), rotation=10)
 
@@ -259,9 +258,9 @@ class AttackDialog(QtGui.QDialog):
         
         form_layout.addRow(QtGui.QLabel("Start date: ", form_widget),
                            self.date_input)
-        form_layout.addRow(QtGui.QLabel("Duration: ", form_widget),
+        form_layout.addRow(QtGui.QLabel("Duration (minutes): ", form_widget),
                            self.duration_input)
-        form_layout.addRow(QtGui.QLabel("Intensity: ", form_widget),
+        form_layout.addRow(QtGui.QLabel("Intensity (Watts): ", form_widget),
                            self.intensity_input)
                            
         form_widget.setLayout(form_layout)
