@@ -251,14 +251,15 @@ def readResults(csvfile):
 
 
 # Save results to a file for later graphing
-def writeResults(csvfile, y_time, y_target, y_predict):
+# 'csvfile' is the name of the file to be written to
+# 'results' is a tuple of iterables of the same length with the data to write
+def writeResults(csvfile, results):
     with open(csvfile, 'wb') as outfile:
         writer = csv.writer(outfile)
-        writer.writerow(('Time', 'Target', 'Prediction'))
-        for t in xrange(len(y_time)):
-            writer.writerow((y_time[t], y_target[t], y_predict[t]))
+        row_list = zip(*results) #Get columns out of rows
+        for row in row_list:
+            writer.writerow(row)
             
-
 
 ##############################  CSV CLASS  ##############################
 class CSV:

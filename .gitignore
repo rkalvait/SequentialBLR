@@ -12,3 +12,4 @@ tensorflow
 nextenergy_sensors.json
 !sample.config.json
 bfg.jar
+app/images/*

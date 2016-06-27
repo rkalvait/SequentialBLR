@@ -50,9 +50,10 @@ def main():
     # Algorithm settings
     algo = Algo(granularity, training_window, forecasting_interval, len(columns)-1)
     
-    y_predict = []
-    y_target = []
-    y_time = []
+    y_time = ['Time']
+    y_target = ['Target']
+    y_predict = ['Prediction']
+    anomalies = ['Anomaly']
     
     count = 0
     
@@ -95,6 +96,9 @@ def main():
             
             if algo.checkSeverity(target, float(prediction)):
                 detected.add(cur_time)
+                anomalies.append(1)
+            else:
+                anomalies.append(0)
                 
         if(cur_time >= 1465038505 and cur_time <= 1465042060):
             ground_truth.add(cur_time)
@@ -106,7 +110,7 @@ def main():
     infile.close()
         
     # Save data for later graphing
-    writeResults(outfile, y_time, y_target, y_predict)
+    writeResults(outfile, (y_time, y_target, y_predict, anomalies))
     
     f1_scores(detected, ground_truth)
     print_stats(y_target, y_predict)
