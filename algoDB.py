@@ -174,7 +174,7 @@ def main():
     ##############################  GRAPHING/STATS  ##############################
 
     # Save data for later graphing
-    writeResults(outfile, y_time, y_target, y_predict)
+    writeResults(outfile, (y_time, y_target, y_predict))
     
     #f1_scores(detected, ground_truth)
     print_stats(y_target, y_predict)
