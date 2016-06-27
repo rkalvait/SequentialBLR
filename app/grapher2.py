@@ -23,17 +23,10 @@ from matplotlib.backends.backend_qt4agg import (
 from matplotlib.figure import Figure
 from PyQt4 import QtGui, QtCore
 
-'''
-if qt_compat.QT_API == qt_compat.QT_API_PYSIDE:
-    from PySide import QtGui, QtCore
-else:
-    from PyQt4 import QtGui, QtCore
-'''
-
-
 from algoRunFunctions import movingAverage
 
-# Be sure to use the right icon file
+##############################  PARAMETERS  ##############################
+DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 icon_file = 'merit_icon.png'
 
 
@@ -58,6 +51,7 @@ class ResultsGraph(FigureCanvas):
         self.predict_line, = self.graph_power.plot(x, y, color='0.8')
         self.target_line, = self.graph_power.plot(x, y, color='r', linestyle='--')
         self.error_line, = self.graph_error.plot(x, y, color='r')
+        self.color_spans = []
 
         # Change settings of graph
         self.graph_power.set_ylabel("Power (kW)")
@@ -75,10 +69,9 @@ class ResultsGraph(FigureCanvas):
         self.setSizePolicy(QtGui.QSizePolicy.Expanding,
                            QtGui.QSizePolicy.Expanding)
         self.updateGeometry()
-
         self.fig.tight_layout()
         self.draw()
-
+        
     # Update the graph using the given data
     # 'times' should be datetime objects
     # 'target' should be float values in Watts
@@ -91,7 +84,6 @@ class ResultsGraph(FigureCanvas):
         target = [i/1000.0 for i in target]
         predict = [i/1000.0 for i in predict]
         error = [predict[i] - target[i] for i in xrange(len(times))]
-        self.color_spans = []
 
         # Determine new bounds of graph
         xmin = min(times)
@@ -111,10 +103,8 @@ class ResultsGraph(FigureCanvas):
         self.error_line.set_data(times, error)
         self.fig.tight_layout()
         self.draw()
-        QtGui.QApplication.processEvents()
 
-
-    # Add a horizontal color span to the target-prediction graph
+    # Add a vertical color span to the target-prediction graph
     # 'start' should be a datetime (preferably in range)
     # 'duration' should be the width of the span in minutes
     # 'color' should be a string describing an _acceptable_ color value
@@ -125,6 +115,7 @@ class ResultsGraph(FigureCanvas):
         self.fig.tight_layout()
         self.draw()
 
+    # Remove all vertical color spans
     def clearSpans(self):
         for span in self.color_spans:
             span.remove()
@@ -139,7 +130,7 @@ class ResultsWindow(QtGui.QMainWindow):
     # Constructor
     def __init__(self):
         super(ResultsWindow, self).__init__()
-        self.setGeometry(50, 50, 800, 500)
+        self.setGeometry(50, 50, 1200, 800)
         self.setWindowTitle('Results Grapher')
         self.setWindowIcon(QtGui.QIcon(icon_file))
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -147,18 +138,23 @@ class ResultsWindow(QtGui.QMainWindow):
         # Create top-level widget and immediate children
         self.statusBar()
         main_widget = QtGui.QWidget()
-        graph_widget = self.graphWidget()
-        settings_widget = self.settingsWidget()
+        self.graph_widget = self.graphWidget()
+        self.settings_widget = self.settingsWidget()
 
         # Add children to layout and set focus to main widget
         layout = QtGui.QVBoxLayout()
-        layout.addWidget(graph_widget)
-        layout.addWidget(settings_widget)
+        layout.addWidget(self.graph_widget)
+        layout.addWidget(self.settings_widget)
         main_widget.setLayout(layout)
         main_widget.setFocus()
         self.setCentralWidget(main_widget)
 
         self.show()
+        
+    ##############################  WIDGET FUNCTIONS  ##############################
+    # These functions create all the widgets, sub-widgets, etc. of the program.
+    # Each function creates a new widget instance, adds all necessary layouts
+    # and sub-widgets, and then returns its widget to the widget above.
 
     # Create an instance of the ResultsGraph widget
     def graphWidget(self):
@@ -176,27 +172,33 @@ class ResultsWindow(QtGui.QMainWindow):
     def settingsWidget(self):
         main_widget = QtGui.QWidget(self)
         file_widget = self.fileWidget(main_widget)
-        options_widget = self.optionsWidget(main_widget)
+        self.options_widget = self.optionsWidget(main_widget)
+        self.options_widget.setDisabled(True)
 
         layout = QtGui.QHBoxLayout(main_widget)
         layout.addWidget(file_widget)
-        layout.addWidget(options_widget)
+        layout.addWidget(self.options_widget)
         main_widget.setLayout(layout)
         return main_widget
 
     # Creates the filename bar and browse button
     def fileWidget(self, parent):
         main_widget = QtGui.QWidget(parent)
-        layout = QtGui.QHBoxLayout()
-
+        layout = QtGui.QGridLayout()
+        
         file_label = QtGui.QLabel("Results file: ", main_widget)
+        file_label.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
+        self.start_label = QtGui.QLabel(" ", main_widget)
+        self.end_label = QtGui.QLabel(" ", main_widget)
         self.file_edit = QtGui.QLineEdit(main_widget)
         browse = QtGui.QPushButton('Browse...')
         browse.clicked.connect(self.browseFile)
-
-        layout.addWidget(file_label)
-        layout.addWidget(self.file_edit)
-        layout.addWidget(browse)
+        
+        layout.addWidget(file_label, 0, 0)
+        layout.addWidget(self.file_edit, 1, 0)
+        layout.addWidget(browse, 1, 1)
+        layout.addWidget(self.start_label, 2, 0)
+        layout.addWidget(self.end_label, 3, 0)
         
         main_widget.setLayout(layout)
         return main_widget
@@ -204,53 +206,58 @@ class ResultsWindow(QtGui.QMainWindow):
     # Creates the options panel to toggle smoothing and anomalies
     def optionsWidget(self, parent):
         main_widget = QtGui.QWidget(parent)
-        layout = QtGui.QVBoxLayout()
+        layout = QtGui.QFormLayout()
 
         self.options_label = QtGui.QLabel("Options:", main_widget)
-        self.options_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.options_label.setDisabled(True)
-        self.smooth_box = QtGui.QCheckBox("Smooth data", main_widget)
+        self.options_label.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
+        #self.options_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.smooth_box = QtGui.QCheckBox("Smooth data (minutes):    ", main_widget)
         self.smooth_box.stateChanged.connect(self.smoothToggled)
-        self.smooth_box.setDisabled(True)
+        self.smooth_edit = QtGui.QLineEdit(main_widget)
+        self.smooth_edit.setText('0')
+        self.smooth_edit.setDisabled(True)
         self.anomaly_box = QtGui.QCheckBox("Show anomalies", main_widget)
         self.anomaly_box.stateChanged.connect(self.anomalyToggled)
-        self.anomaly_box.setDisabled(True)
+        #reset = QtGui.QPushButton("Reset", main_widget)
+        #reset.clicked.connect(self.resetOptions)
+        update = QtGui.QPushButton("Update Graph", main_widget)
+        update.clicked.connect(self.updateGraph)
         
-        layout.addWidget(self.options_label)
-        layout.addWidget(self.smooth_box)
-        layout.addWidget(self.anomaly_box)
+        layout.addRow(self.options_label)
+        layout.addRow(self.smooth_box, self.smooth_edit)
+        layout.addRow(self.anomaly_box)
+        layout.addRow(update)
         
         main_widget.setLayout(layout)
         return main_widget
         
-    # Decide what to do based on the state of the smooth checkbox
-    def smoothToggled(self, state):
-        if state == QtCore.Qt.Checked:
-            self.smoothData()
-        else:
-            self.canvas.graphData(self.times, self.target, self.predict)
-            
-    # Decide what to do based on the state of the anomaly checkbox
-    def anomalyToggled(self, state):
-        if state == QtCore.Qt.Checked:
-            self.showAnomalies()
-        else:
-            self.canvas.clearSpans()
+    ##############################  HELPER FUNCTIONS  ##############################
+    # These functions do the actual work of the program.
+    # Most are called in response to an event triggered by the main window, while
+    # others are helper functions which perform a simple task.
 
-    # Search the file system for the desired input file
+    # Return true if the given filename is valid, false otherwise
+    def checkFilename(self, filename):
+        if filename == '':
+            self.statusBar().showMessage("Error: no file name given")
+            return False
+        elif filename[-4:] != '.csv':
+            self.statusBar().showMessage("Error: file must be '.csv' format")
+            return False
+        return True
+        
+    # Open the file search dialog window and get the resulting filename
     def browseFile(self):
         filename = str(QtGui.QFileDialog.getOpenFileName())
         self.file_edit.setText(filename)
         if (filename != ''):
             self.loadFile()
             self.canvas.graphData(self.times, self.target, self.predict)
-            self.options_label.setEnabled(True)
-            self.smooth_box.setEnabled(True)
-            self.anomaly_box.setEnabled(True)
+            self.options_widget.setEnabled(True)
+            self.statusBar().showMessage("Graphing complete.", 5000)
 
     # Load data from the file given by filename
     def loadFile(self):
-        loading_win = LoadingWindow()
         filename = str(self.file_edit.text())
 
         if self.checkFilename(filename):
@@ -286,42 +293,55 @@ class ResultsWindow(QtGui.QMainWindow):
                     self.times = [
                         dt.datetime.strptime(t, DATE_FORMAT) for t in self.times]
 
-                self.statusBar().showMessage("Graphing complete.", 5000)
-
-        loading_win.close()
-
-    # Return true if the given filename is valid, false otherwise
-    def checkFilename(self, filename):
-        if filename == '':
-            self.statusBar().showMessage("Error: no file name given")
-            return False
-        elif filename[-4:] != '.csv':
-            self.statusBar().showMessage("Error: file must be '.csv' format")
-            return False
-        return True
-        
-    # Open a dialog prompting the user for a smoothing value
-    def smoothData(self):
-        if getattr(self, 'times', None) == None:
-            self.statusBar().showMessage("Error: no file name given")
-            return False
-
-        smoothing_window, ok = QtGui.QInputDialog.getInt(
-            None, #parent
-            'Smooth Data', #title
-            'Smoothing window (minutes)', #label
-            value=120, #default
-            min=5) #minimum
-
-        if ok:
-            self.canvas.graphData(
-                self.times,
-                movingAverage(self.target, smoothing_window),
-                movingAverage(self.predict, smoothing_window))
+                self.start_label.setText(
+                    "Start time: %s" % dt.datetime.strftime(self.times[0], DATE_FORMAT))
+                self.end_label.setText(
+                    "End time: %s" % dt.datetime.strftime(self.times[-1], DATE_FORMAT))
+                
+    # Decide what to do based on the state of the smooth checkbox
+    def smoothToggled(self, state):
+        if state == QtCore.Qt.Checked:
+            self.smooth_edit.setEnabled(True)
+        else:
+            self.smooth_edit.setDisabled(True)
+            self.smooth_edit.setText('0')
+            
+    # Decide what to do based on the state of the anomaly checkbox
+    def anomalyToggled(self, state):
+        if state == QtCore.Qt.Checked:
+            self.showAnomalies()
+        else:
+            self.canvas.clearSpans()
+    
+    # Decide what to do based on the state of the smooth checkbox
+    def updateGraph(self):
+        try:
+            smoothing_window = int(self.smooth_edit.text())
+        except:
+            error_window = QtGui.QErrorMessage(self)
+            error_window.showMessage("Smoothing window must be integer value.")
+        else:
+            if smoothing_window > 0:
+                self.canvas.graphData(
+                    self.times,
+                    movingAverage(self.target, smoothing_window),
+                    movingAverage(self.predict, smoothing_window))
+            else:
+                self.canvas.graphData(self.times, self.target, self.predict)
+            self.statusBar().showMessage("Graphing complete.", 5000)
+                
+    # Reset the settings to default and draw the original graph
+    def resetOptions(self):
+        self.smooth_box.setCheckState(QtCore.Qt.Unchecked)
+        self.anomaly_box.setCheckState(QtCore.Qt.Unchecked)
+        self.canvas.clearSpans()
+        self.canvas.graphData(self.times, self.target, self.predict)
 
     # Draw colored bars to show regions where anomalies happened
     def showAnomalies(self):
-        self.anomaly_box.setDisabled(True)
+        self.settings_widget.setDisabled(True)
+        loading_win = LoadingWindow()
+
         count = 0
         anomaly_count = 0
         start = self.times[0]
@@ -342,14 +362,15 @@ class ResultsWindow(QtGui.QMainWindow):
                 start = self.times[count]
                 QtGui.QApplication.processEvents()
         
-        self.anomaly_box.setEnabled(True)
+        self.settings_widget.setEnabled(True)
+        loading_win.close()
 
 
 # Create a "loading window" which has an infinitely running progress bar
 class LoadingWindow(QtGui.QDialog):
 
     def __init__(self):
-        super(LoadingWindow, self).__init__()
+        super(LoadingWindow, self).__init__(None, QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowTitle(' ')
         self.setWindowIcon(QtGui.QIcon(icon_file))
 
