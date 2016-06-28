@@ -93,7 +93,12 @@ def main():
     columns.append(jsonDataFile['totalConsum'])
     print "Number of columns:", len(columns)
  
+<<<<<<< HEAD
     outfile = open(outfilename, 'wb')
+=======
+    outfile = 'furnance_HRV.csv'
+    outfile = open(outfile, 'wb')
+>>>>>>> 054410f6648f99ddccd3f13a3e278641f1a1f160
     writer = csv.writer(outfile)
 
     last = np.zeros(len(columns))

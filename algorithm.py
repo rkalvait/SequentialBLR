@@ -52,9 +52,9 @@ class Algo(object):
         self.sigma = 1000
         
         # Severity parameters. Other pairs can also be used, see paper
-        self.w, self.L = (0.53, 3.714) # Most sensitive
+        #self.w, self.L = (0.53, 3.714) # Most sensitive
         #self.w, self.L = (0.84, 3.719) # Medium sensitive
-        #self.w, self.L = (1.00, 3.719) # Least sensitive
+        self.w, self.L = (1.00, 3.719) # Least sensitive
         print "w, L: %.3f, %.3f" % (self.w, self.L)
         
         self.sigma_w = np.sqrt(self.w/(2-self.w))
