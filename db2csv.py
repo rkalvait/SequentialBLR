@@ -17,11 +17,11 @@ import json
 from urllib import urlopen
 
 from database import Database
-
+from grapher import DATE_FORMAT
 
 ##############################  PARAMETERS  ##############################
 CONFIG_FILE = 'config.txt'
-outfile = 'results.csv'
+outfilename = 'furnace_environment_inside.csv'
 
 ##############################  FUNCTIONS  ##############################
 
@@ -67,6 +67,8 @@ def main():
     print ("\nRetreiving data from database...")
     database = Database(CONFIG_FILE)
 
+    granularity_in_seconds = int(jsonDataFile['granularity']) * 60
+
     # Get the list of feature numbers
     id_list = getListIDs(jsonDataFile["idSelection"])
     id_list = list(set(id_list)) # Remove duplicates
@@ -91,8 +93,7 @@ def main():
     columns.append(jsonDataFile['totalConsum'])
     print "Number of columns:", len(columns)
  
-    outfile = 'db1.csv'
-    outfile = open(outfile, 'wb')
+    outfile = open(outfilename, 'wb')
     writer = csv.writer(outfile)
 
     last = np.zeros(len(columns))
@@ -134,7 +135,7 @@ def main():
         start_time = stop_time  # Increment and loop
 
     outfile.close()
-    print "See %s for results." % outfile
+    print "See %s for results." % outfilename
     
     
 # If run as main:
