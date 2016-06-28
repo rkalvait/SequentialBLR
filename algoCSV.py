@@ -113,7 +113,7 @@ def main():
     writeResults(outfile, (y_time, y_target, y_predict, anomalies))
     
     f1_scores(detected, ground_truth)
-    print_stats(y_target, y_predict)
+    print_stats(y_target[1:], y_predict[1:]) #Remove header
 
     print "Ending analysis. See %s for results." % sys.argv[2]
     

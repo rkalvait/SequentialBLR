@@ -1,9 +1,22 @@
 #!/usr/bin/env python
 
-# Update grapher which also shows green, yellow, and red sections
-# Filename:     grapher2.py
-# Author(s):    apadin
-# Start Date:   2016-06-24
+"""Updated version of grapher using PyQt4.
+
+Filename:     grapher2.py
+Author(s):    apadin
+Start Date:   2016-06-24
+
+This file is used specifically to graph results files in the CSV format
+in the following form:
+
+Timestamp,Target,Prediction,Anomaly
+1464763755,9530,26466,0
+...
+
+Here, Timestamp is in UTC, Target and Prediction are in Watts, and 
+Anomaly is a binary value (1 or 0) indicating whether or not
+this target-prediction pair is an anomaly or not.
+"""
 
 import os
 import sys

@@ -3,10 +3,8 @@
 # Author(s):    apadin, with code from dvorva, mjmor, yabskbd
 # Start Date:   5/9/2016
 
-
-import datetime as dt
-import logging
 import time
+import datetime as dt
 import numpy as np
 import pickle
 
@@ -18,10 +16,10 @@ from algoRunFunctions import train, severityMetric, runnable
 X_BACKUP_FILENAME = 'X_backup.bak'
 RESULTS_FILENAME = 'results.csv'
 
-LOG_FILENAME = '/var/log/sequential_predictions.log'
-LOG_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 
-
+# This class defines the BLR algorithm and associated data manipulation.
+# It is meant to act in conjunction with other programs which perform data
+# collection and pass their data to Algo for analysis.
 class Algo(object):
 
     # Constructor
@@ -70,9 +68,7 @@ class Algo(object):
         self.y_target = []
         self.y_predict = []
         self.anomalies = []
-
         self.results_file = RESULTS_FILENAME
-
 
     # Read the previous training window from a backup file
     def fromBackup(self, filename=X_BACKUP_FILENAME):
@@ -87,8 +83,6 @@ class Algo(object):
         except IOError:
             print "***WARNING: No training backup found.***"
         else:
-
-            # Check that the backup matches the parameters
             if (np.shape(X_backup) == np.shape(self.x)):
                 print "Training backup file found..."
                 self.X = X_backup
@@ -96,7 +90,6 @@ class Algo(object):
             else:
                 print "Unable to use training backup. Continuing analysis without backup..."
                 pass
-
 
     # Add new data, train
     def run(self, new_data):
@@ -106,7 +99,6 @@ class Algo(object):
         # Check if it's time to train
         if ( ((self.row_count % self.forecasting_interval) == 0) and
              ((self.row_count >= self.matrix_length) or self.init_training) ):
-
             self.train()
 
         # Check if we can make a prediction
@@ -123,18 +115,15 @@ class Algo(object):
                 self.sigma = 1
                 
             return prediction
-            
         else:
             return None
             
-                
+    # Update severity metric and check for anomaly
+    # Return true if anomaly is detected, false otherwise
     def checkSeverity(self, target, prediction):
-
-        # Update severity metric
         error = prediction - target
         Sn, Zn = severityMetric(error, self.mu, self.sigma, self.w, self.Sn_1)
 
-        # Return true if anomaly is detected
         # Uses two-in-a-row counter similar to branch prediction
         if np.abs(Sn) <= self.THRESHOLD:
             self.alert_counter = 0
@@ -149,10 +138,7 @@ class Algo(object):
             #print "ERROR: ANOMALY"
 
         self.Sn_1 = Sn
-        
         return anomaly_found
-            
-
 
     # Add new row of data to the matrix
     def addData(self, new_data):
@@ -161,10 +147,8 @@ class Algo(object):
         self.X[current_row] = new_data
         self.row_count += 1
 
-
     # Train the model
     def train(self):
-
         # Unwrap the matrices (put the most recent data on the bottom)
         pivot = self.row_count % self.matrix_length
         data = self.X[pivot:, :self.num_features]
@@ -173,8 +157,6 @@ class Algo(object):
         y = np.concatenate((y, self.X[:pivot, self.num_features]), axis=0)
 
         if (self.init_training or runnable(data) > 0.5):
-        
-            # BLR train:
             self.w_opt, self.a_opt, self.b_opt, self.S_N = train(data, y)
             self.init_training = True
             
@@ -183,44 +165,8 @@ class Algo(object):
             with open(self.X_backup_file, 'wb') as outfile:
                 pickle.dump(self.X, outfile)
 
-
     # Make a prediction based on new data
     def prediction(self, new_data):
         assert len(new_data) == len(self.w_opt)
         return max(0, np.inner(new_data, self.w_opt))
 
-
-#############################  FUNCTIONS  #############################
-        
-# Calculates the f1-scores for the given sets
-def f1_scores(detected, ground_truth):
-
-    # Calculate the True Positives, False Positives and False Negatives
-    # For more information, see: https://en.wikipedia.org/wiki/Precision_and_recall
-    TP = (detected & ground_truth)
-    
-    FP = float(len(detected - TP))
-    FN = float(len(ground_truth-TP))
-    TP = float(len(TP))
-    print "TP: {}, FP: {}, FN: {}".format(TP,FP,FN)
-
-    try:
-        precision = TP / (TP + FP)
-    except ZeroDivisionError:
-        precision = float('nan')
-
-    try:
-        recall = TP / (TP + FN)
-    except ZeroDivisionError:
-        recall = float('nan')
-
-    try:
-        f1_score = (2*TP)/((2*TP) + FP + FN)
-    except ZeroDivisionError:
-        f1_score = float('nan')
-
-    print "Precision: {}\nRecall: {}\nF1 Score: {}".format(precision, recall, f1_score)
-    
-    return precision, recall, f1_score
-        
-    

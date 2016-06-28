@@ -22,14 +22,6 @@ from matplotlib.backends.backend_qt4agg import (
 from matplotlib.figure import Figure
 from PyQt4 import QtGui, QtCore
 
-'''
-use_pyside = qt_compat.QT_API == qt_compat.QT_API_PYSIDE
-if use_pyside:
-    from PySide import QtGui, QtCore
-else:
-    from PyQt4 import QtGui, QtCore
-'''
-
 
 ##############################  QT CLASSES  ##############################
 
@@ -104,8 +96,8 @@ class MainWindow(QtGui.QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setGeometry(50, 50, 800, 500)
-        self.setWindowTitle('NextHome Energy Analysis')
-        self.setWindowIcon(QtGui.QIcon('merit_icon.ppm'))
+        self.setWindowTitle('Attacker')
+        self.setWindowIcon(QtGui.QIcon('merit_icon.png'))
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
         self.statusBar()
@@ -290,6 +282,7 @@ class MainWindow(QtGui.QMainWindow):
 class AttackDialog(QtGui.QDialog):
     def __init__(self, parent=None):
         super(AttackDialog, self).__init__(parent)
+        self.setWindowTitle('Add Attack')
         layout = QtGui.QVBoxLayout()
         
         form_widget = QtGui.QWidget(self)
