@@ -8,6 +8,7 @@ import sys
 import time
 import numpy as np
 import scipy as sp
+import scipy.stats
 import json
 from urllib import urlopen
 

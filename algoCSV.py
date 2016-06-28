@@ -14,8 +14,9 @@ import datetime as dt
 import numpy as np
 import csv
 
-from algorithm import Algo, f1_scores
-from grapher import DATE_FORMAT, writeResults, print_stats
+from algorithm import Algo
+from grapher import DATE_FORMAT, writeResults
+from algoRunFunctions import f1_scores, print_stats
 
 
 ##############################  PARAMETERS  ##############################
@@ -62,7 +63,7 @@ def main():
     # The smaller value of alpha, the more averaging takes place
     # A value of 1.0 means no averaging happens
     last_avg = np.zeros(len(columns))
-    alpha = 1
+    alpha = .72
     print "Alpha: %.3f" % alpha
     
     detected = set()
@@ -100,7 +101,9 @@ def main():
             else:
                 anomalies.append(0)
                 
-        if(cur_time >= 1465038505 and cur_time <= 1465042060):
+        if(cur_time >= 1338796800 and cur_time <= 1338800400):
+            ground_truth.add(cur_time)
+        elif(cur_time >= 1339138800 and cur_time <= 1339141500):
             ground_truth.add(cur_time)
          
 
