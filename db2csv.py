@@ -91,7 +91,7 @@ def main():
     columns.append(jsonDataFile['totalConsum'])
     print "Number of columns:", len(columns)
  
-    outfile = 'db1.csv'
+    outfile = 'furnance_HRV.csv'
     outfile = open(outfile, 'wb')
     writer = csv.writer(outfile)
 
