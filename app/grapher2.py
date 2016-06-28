@@ -366,14 +366,14 @@ class ResultsWindow(QtGui.QMainWindow):
 
         for i in self.anomalies:
             anomaly_count += self.anomalies[count]
-            count += 1
-            if (count % dur) == 0:
+            if ((count+1) % dur) == 0:
                 if anomaly_count >   level3: self.canvas.colorSpan(start, dur, 'red')
                 elif anomaly_count > level2: self.canvas.colorSpan(start, dur, 'orange')
                 elif anomaly_count > level1: self.canvas.colorSpan(start, dur, 'green')
                 anomaly_count = 0
                 start = self.times[count]
                 QtGui.QApplication.processEvents()
+            count += 1
         
         self.settings_widget.setEnabled(True)
         loading_win.close()

@@ -22,6 +22,17 @@ from matplotlib.backends.backend_qt4agg import (
 from matplotlib.figure import Figure
 from PyQt4 import QtGui, QtCore
 
+from grapher2 import DATE_FORMAT
+
+
+##############################  HELPER FUNCTIONS  ##############################
+'''
+def timestamp_from_datetime(date):
+    EPOCH = dt.datetime.fromtimestamp(0)
+    (dt.datetime.utcfromtimestamp(now) - dt.datetime.utcfromtimestamp(0)).total_seconds()
+
+def datetime_from_timestamp
+'''
 
 ##############################  QT CLASSES  ##############################
 
@@ -267,16 +278,18 @@ class MainWindow(QtGui.QMainWindow):
         # Verify that the times are usable
         if (startdate > self.times[-1] or
                 enddate < self.times[0]):
-            self.statusBar().showMessage(
-                "Error: attack out of range", 5000)
-            raise ValueError("Attack out of range")
-            
+            error_window = QtGui.QErrorMessage(self)
+            error_window.showMessage("Attack out of range.")
+
+        print time.mktime(startdate.timetuple())
+        print time.mktime(enddate.timetuple())
+        
         for index in xrange(len(self.times)):
             if self.times[index] > enddate:
                 return
             if self.times[index] > startdate:
                 self.new_power[index] += intensity
-
+        
                 
 # Dialog window for adding a new attack
 class AttackDialog(QtGui.QDialog):
