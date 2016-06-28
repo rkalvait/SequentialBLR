@@ -2,13 +2,8 @@
 	"granularity": "1",
 	"windowSize": "24",
   "forecastingInterval": "1",
-<<<<<<< HEAD
-  "idSelection": "27-30",
-  "totalConsum": "circuitFurnaceHRV",
-=======
   "idSelection": "3",
   "totalConsum": "circuitGrid",
->>>>>>> 054410f6648f99ddccd3f13a3e278641f1a1f160
   "specifyTime": "1",
   "beginTime" : "2012-06-07 00:00:00",
   "endTime": "2012-06-28 00:00:00",
