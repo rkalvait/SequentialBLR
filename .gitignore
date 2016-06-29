@@ -2,10 +2,11 @@ config.json
 config.txt
 *.pyc
 *.pyo
-figures*/*
+*figures*
+*results*
+*test*
 algoRun
 tensorflow
-*test*
 *.bak
 *.csv
 *config.json

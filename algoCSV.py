@@ -51,7 +51,7 @@ def main():
     # Algorithm settings
     algo = Algo(granularity, training_window, forecasting_interval, len(columns)-1)
     
-    y_time = ['Time']
+    y_time = ['Timestamp']
     y_target = ['Target']
     y_predict = ['Prediction']
     anomalies = ['Anomaly']
@@ -63,8 +63,12 @@ def main():
     # The smaller value of alpha, the more averaging takes place
     # A value of 1.0 means no averaging happens
     last_avg = np.zeros(len(columns))
-    alpha = 1
+    alpha = .25
     print "Alpha: %.3f" % alpha
+    
+    algo.setSeverityParameters(w=0.53, L=3.714) # Most sensitive
+    #algo.setSeverityParameters(w=0.84, L=3.719) # Medium sensitive
+    #algo.setSeverityParameters(w=1.00, L=3.719) # Least sensitive
     
     detected = set()
     ground_truth = set()
@@ -101,9 +105,9 @@ def main():
             else:
                 anomalies.append(0)
                 
-        if(cur_time >= 1339700400 and cur_time <= 1339704000):
+        if(cur_time >= 1338699600 and cur_time < 1338703200):
             ground_truth.add(cur_time)
-        if(cur_time >= 1340064000 and cur_time <= 1340066700):
+        if(cur_time >= 1339221600 and cur_time < 1339224300):
             ground_truth.add(cur_time)
  
 
