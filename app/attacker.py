@@ -59,7 +59,7 @@ class MyCanvas(FigureCanvas):
     # Update the graph using the given data
     # 'times' should be datetime objects
     # 'power' should be in Watts
-    def updateGraph(self, times, power):
+    def graphData(self, times, power):
         power = [i/1000.0 for i in power]
         xmin = min(times)
         xmax = max(times)
@@ -217,7 +217,7 @@ class MainWindow(QtGui.QMainWindow):
                 except ValueError:
                     self.times = [dt.datetime.strptime(t, DATE_FORMAT) for t in timestamps]
                     
-                self.canvas.updateGraph(self.times, self.old_power)
+                self.canvas.graphData(self.times, self.old_power)
                 self.new_power = [item for item in self.old_power]
                 self.statusBar().showMessage(
                     "Graphing complete.", 5000)
@@ -263,7 +263,7 @@ class MainWindow(QtGui.QMainWindow):
             else:
                 return
             self.addAttack(startdate, duration, intensity)
-            self.canvas.updateGraph(self.times, self.new_power)
+            self.canvas.graphData(self.times, self.new_power)
             self.canvas.colorSpan(startdate, duration, 'red')
             self.statusBar().showMessage(
                 "Graphing complete.", 5000)

@@ -61,12 +61,13 @@ def main():
     # The smaller value of alpha, the more averaging takes place
     # A value of 1.0 means no averaging happens
     last_avg = np.zeros(len(columns))
-    alpha = .25
+    alpha = 1
     print "Alpha: %.3f" % alpha
     
-    algo.setSeverityParameters(w=0.53, L=3.714) # Most sensitive
+    #algo.setSeverityParameters(w=0.53, L=3.714) # Most sensitive
     #algo.setSeverityParameters(w=0.84, L=3.719) # Medium sensitive
     #algo.setSeverityParameters(w=1.00, L=3.719) # Least sensitive
+    algo.setSeverityParameters(w=1.00, L=3.9) # Most sensitive
     
     detected = set()
     ground_truth = set()
