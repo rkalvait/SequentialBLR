@@ -15,11 +15,9 @@ import numpy as np
 import csv
 
 from algorithm import Algo
-from grapher import DATE_FORMAT, writeResults
+from param import DATE_FORMAT
+from results import writeResults
 from algoRunFunctions import f1_scores, print_stats
-
-
-##############################  PARAMETERS  ##############################
 
 
 ##############################  MAIN  ##############################
