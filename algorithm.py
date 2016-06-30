@@ -55,10 +55,7 @@ class Algo(object):
         #self.w, self.L = (0.53, 3.714) # Most sensitive
         #self.w, self.L = (0.84, 3.719) # Medium sensitive
         self.w, self.L = (1.00, 3.719) # Least sensitive
-        print "w, L: %.3f, %.3f" % (self.w, self.L)
-        
-        self.sigma_w = np.sqrt(self.w/(2-self.w))
-        self.THRESHOLD = self.L * self.sigma_w
+        self.THRESHOLD = self.L * np.sqrt(self.w/(2-self.w))
         self.Sn_1 = 0
         self.alert_counter = 0
 
@@ -172,4 +169,12 @@ class Algo(object):
     def prediction(self, new_data):
         assert len(new_data) == len(self.w_opt)
         return max(0, np.inner(new_data, self.w_opt))
+        
+    # Change the severity parameters (omega w and lambda L)
+    def setSeverityParameters(self, w, L):
+        self.w = w
+        self.L = L
+        self.THRESHOLD = self.L * np.sqrt(self.w/(2-self.w))
+        print "w, L: %.3f, %.3f" % (self.w, self.L)
+
 

@@ -15,11 +15,9 @@ import numpy as np
 import csv
 
 from algorithm import Algo
-from grapher import DATE_FORMAT, writeResults
+from param import DATE_FORMAT
+from results import writeResults
 from algoRunFunctions import f1_scores, print_stats
-
-
-##############################  PARAMETERS  ##############################
 
 
 ##############################  MAIN  ##############################
@@ -51,7 +49,7 @@ def main():
     # Algorithm settings
     algo = Algo(granularity, training_window, forecasting_interval, len(columns)-1)
     
-    y_time = ['Time']
+    y_time = ['Timestamp']
     y_target = ['Target']
     y_predict = ['Prediction']
     anomalies = ['Anomaly']
@@ -67,6 +65,10 @@ def main():
     #alpha = 1
     #alpha = .7
     print "Alpha: %.3f" % alpha
+    
+    algo.setSeverityParameters(w=0.53, L=3.714) # Most sensitive
+    #algo.setSeverityParameters(w=0.84, L=3.719) # Medium sensitive
+    #algo.setSeverityParameters(w=1.00, L=3.719) # Least sensitive
     
     detected = set()
     ground_truth = set()
@@ -102,10 +104,15 @@ def main():
                 anomalies.append(1)
             else:
                 anomalies.append(0)
+<<<<<<< HEAD
         '''        
         if(cur_time >= 1339700400 and cur_time <= 1339704000):
+=======
+                
+        if(cur_time >= 1338699600 and cur_time < 1338703200):
+>>>>>>> 7caa3dbaddfb7eb88bbb7a16ebb4610d9a19694c
             ground_truth.add(cur_time)
-        if(cur_time >= 1340064000 and cur_time <= 1340066700):
+        if(cur_time >= 1339221600 and cur_time < 1339224300):
             ground_truth.add(cur_time)
         '''
 
