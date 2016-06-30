@@ -5,8 +5,8 @@
   "idSelection": "3",
   "totalConsum": "circuitGrid",
   "specifyTime": "1",
-  "beginTime" : "2012-06-07 00:00:00",
-  "endTime": "2012-06-28 00:00:00",
+  "beginTime" : "2012-05-01 00:00:00",
+  "endTime": "2012-05-27 00:00:00",
   "data": [
     {
      "idNumber" : "1",

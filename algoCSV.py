@@ -61,7 +61,13 @@ def main():
     # The smaller value of alpha, the more averaging takes place
     # A value of 1.0 means no averaging happens
     last_avg = np.zeros(len(columns))
+<<<<<<< HEAD
     alpha = 1
+=======
+    alpha = float(raw_input('Enter Value of alpha:'))
+    #alpha = 1
+    #alpha = .7
+>>>>>>> f0377d23ca80d848d61776ddfbe0fba14be9548e
     print "Alpha: %.3f" % alpha
     
     #algo.setSeverityParameters(w=0.53, L=3.714) # Most sensitive
@@ -103,12 +109,23 @@ def main():
                 anomalies.append(1)
             else:
                 anomalies.append(0)
+<<<<<<< HEAD
+        '''        
+        if(cur_time >= 1339700400 and cur_time <= 1339704000):
+=======
                 
         if(cur_time >= 1338699600 and cur_time < 1338703200):
+>>>>>>> 7caa3dbaddfb7eb88bbb7a16ebb4610d9a19694c
             ground_truth.add(cur_time)
         if(cur_time >= 1339221600 and cur_time < 1339224300):
             ground_truth.add(cur_time)
- 
+        '''
+
+        if(cur_time >= 1337022000 and cur_time <= 1337025600):
+            ground_truth.add(cur_time)
+       # if(cur_time >= 1337385600 and cur_time <= 1337388300):
+        #    ground_truth.add(cur_time)
+ 	#'''	
 
     ##############################  GRAPHING/STATS  ##############################
          
