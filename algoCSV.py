@@ -63,7 +63,9 @@ def main():
     # The smaller value of alpha, the more averaging takes place
     # A value of 1.0 means no averaging happens
     last_avg = np.zeros(len(columns))
-    alpha = 1
+    alpha = float(raw_input('Enter Value of alpha:'))
+    #alpha = 1
+    #alpha = .7
     print "Alpha: %.3f" % alpha
     
     detected = set()
@@ -100,12 +102,18 @@ def main():
                 anomalies.append(1)
             else:
                 anomalies.append(0)
-                
+        '''        
         if(cur_time >= 1339700400 and cur_time <= 1339704000):
             ground_truth.add(cur_time)
         if(cur_time >= 1340064000 and cur_time <= 1340066700):
             ground_truth.add(cur_time)
- 
+        '''
+
+        if(cur_time >= 1337022000 and cur_time <= 1337025600):
+            ground_truth.add(cur_time)
+       # if(cur_time >= 1337385600 and cur_time <= 1337388300):
+        #    ground_truth.add(cur_time)
+ 	#'''	
 
     ##############################  GRAPHING/STATS  ##############################
          

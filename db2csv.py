@@ -21,7 +21,7 @@ from grapher import DATE_FORMAT
 
 ##############################  PARAMETERS  ##############################
 CONFIG_FILE = 'config.txt'
-outfilename = 'furnace_environment_inside.csv'
+outfilename = 'Fur_May.csv'
 
 ##############################  FUNCTIONS  ##############################
 
@@ -121,12 +121,13 @@ def main():
         new_data = database.get_avg_data(start_time, stop_time, columns)
         
         new_data = np.asarray([max(0, data) for data in new_data])   # Remove 'nan' and negative
-        
+        '''        
         if new_data[2] == 0:
-            new_data[1] = last[1]
+            new_data[3] = last[3]
             new_data[2] = last[2]
         else:
             last = new_data
+        '''
 
         start_time = time.mktime(start_time.timetuple())
         new_data = np.insert(new_data, 0,  start_time)
