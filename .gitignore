@@ -5,6 +5,7 @@ config.txt
 *figures*
 *results*
 *test*
+data/*
 algoRun
 tensorflow
 *.bak
@@ -15,3 +16,4 @@ nextenergy_sensors.json
 bfg.jar
 app/images/*
 smartDriver.json
+

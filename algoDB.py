@@ -12,17 +12,16 @@ import sys
 import time
 import datetime as dt
 import numpy as np
-import csv
 import json
 from urllib import urlopen
 
-from algorithm import Algo, f1_scores
-from grapher import DATE_FORMAT, writeResults, print_stats
+from param import *
+from algo import Algo
 from database import Database
+from algoFunctions import f1_scores, print_stats, writeResults
 
 
 ##############################  PARAMETERS  ##############################
-CONFIG_FILE = 'config.txt'
 outfile = 'results.csv'
 
 ##############################  FUNCTIONS  ##############################
@@ -68,8 +67,8 @@ def getListIDs(inputIDs):
 def main():
 
     # Retreive settings from JSON settings file
-    with open('smartDriver.json') as data_file:
-        jsonDataFile = json.load(data_file)
+    with open(SMART_DRIVER) as driver:
+        jsonDataFile = json.load(driver)
 
     granularity = int(jsonDataFile['granularity'])
     training_window = int(jsonDataFile['windowSize'])
@@ -81,7 +80,7 @@ def main():
     granularity_in_seconds = granularity * 60
            
     # Initialize database
-    database = Database(CONFIG_FILE)
+    database = Database(DB_CONFIG)
            
     # Get the list of feature numbers
     id_list = getListIDs(jsonDataFile["idSelection"])

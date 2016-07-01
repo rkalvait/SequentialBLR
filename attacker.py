@@ -22,7 +22,7 @@ from matplotlib.backends.backend_qt4agg import (
 from matplotlib.figure import Figure
 from PyQt4 import QtGui, QtCore
 
-from grapher2 import DATE_FORMAT
+from param import *
 
 
 ##############################  HELPER FUNCTIONS  ##############################

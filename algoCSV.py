@@ -1,7 +1,7 @@
 #!/usr/bin/python -O
 
 # Version of algoRun to analize CSV data
-# Filename:     algoRunCSV.py
+# Filename:     algoCSV.py
 # Author(s):    apadin
 # Start Date:   6/8/2016
 
@@ -14,10 +14,9 @@ import datetime as dt
 import numpy as np
 import csv
 
-from algorithm import Algo
+from algo import Algo
 from param import DATE_FORMAT
-from results import writeResults
-from algoRunFunctions import f1_scores, print_stats
+from algoFunctions import f1_scores, print_stats, writeResults
 
 
 ##############################  MAIN  ##############################

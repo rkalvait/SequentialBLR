@@ -1,431 +1,407 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
-# Grapher class for plotting target and prediction values
-# Filename:     grapher.py
-# Author(s):    apadin
-# Start Date:   5/13/2016
+"""Updated version of grapher using PyQt4.
 
-import argparse
-import time
+Filename:     grapher2.py
+Author(s):    apadin
+Start Date:   2016-06-24
+
+This program graphs files with the following format:
+
+Timestamp,Target,Prediction,Anomaly
+1464763755,9530,26466,0
+
+- Timestamp is an integer representing a UTC timestamp
+- Target and Prediction are power values in Watts
+- Anomaly is a binary value (1 or 0) indicating whether or not
+    this target-prediction pair is an anomaly or not.
+    
+"""
+
+import os
 import sys
+import csv
+import time
 import datetime as dt
 import numpy as np
-import csv
-from multiprocessing import Process, Queue, freeze_support
-from Queue import Empty as QueueEmpty
 
-from algoRunFunctions import movingAverage
-
-import Tkinter as Tk    # GUI Library
-
-import matplotlib
-matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
+from matplotlib import pyplot as plt
 from matplotlib.dates import DateFormatter
 from matplotlib.ticker import LinearLocator
-from matplotlib.lines import Line2D
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.backends import qt_compat
+from matplotlib.backends.backend_qt4agg import (
+    FigureCanvasQTAgg as FigureCanvas,
+    NavigationToolbar2QT as NavigationToolbar)
+from matplotlib.figure import Figure
+from PyQt4 import QtGui, QtCore
+
+from algoFunctions import movingAverage
 
 
-##############################  DEFINITIONS  ##############################
+##############################  PARAMETERS  ##############################
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
-DEFAULT_FILE = 'results.csv'
-ICON_FILE = 'app/merit_icon.ppm'
+icon_file = 'merit_icon.png'
 
 
-##############################  HELPER FUNCTIONS  ##############################
 
-# Give the window a title and icon, destroy cleanly when X is pressed
-def initWindow(window, title=" ", root=False):
-    window.wm_title(title)                              # Change title
-    icon = Tk.PhotoImage(file = ICON_FILE)                 # Change icon
-    window.tk.call('wm', 'iconphoto', window._w, icon)
+##############################  QT CLASSES  ##############################
 
-    def quit_and_destroy(window):
-        window.quit()
-        window.destroy()
-        sys.exit(0)
-
-    window.protocol("WM_DELETE_WINDOW", lambda: quit_and_destroy(window))
-
-
-##############################  GRAPHFRAME CLASS  ##############################
-class GraphFrame(Tk.Frame):
+# Figure class used for graphing results
+class ResultsGraph(FigureCanvas):
 
     # Constructor
-    def __init__(self, master, queue):
+    def __init__(self, parent=None, width=5, height=4, dpi=80):
+        self.fig = Figure(figsize=(width, height), dpi=dpi)
+        FigureCanvas.__init__(self, self.fig)
+        self.setParent(parent)
 
-        Tk.Frame.__init__(self, master)
-        Tk.Grid.rowconfigure(self, 0, weight=1)
-        Tk.Grid.columnconfigure(self, 0, weight=1)
+        # Create graphs and lines
+        self.graph_power = self.fig.add_subplot(211)
+        self.graph_error = self.fig.add_subplot(212)
+        zero = dt.datetime.fromtimestamp(0)
+        one = dt.datetime.fromtimestamp(1)
+        x, y = [zero, one], [-1, -1]
+        self.predict_line, = self.graph_power.plot(x, y, color='0.8')
+        self.target_line, = self.graph_power.plot(x, y, color='r', linestyle='--')
+        self.error_line, = self.graph_error.plot(x, y, color='r')
+        self.color_spans = []
 
-        # Update the graph periodically with new data
-        self.graph_queue = queue
-        self.after_idle(self.checkQueue)
+        # Change settings of graph
+        self.graph_power.set_ylabel("Power (kW)")
+        self.graph_error.set_ylabel("Error (kW)")
+        self.graph_power.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M:%S"))
+        self.graph_error.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M:%S"))
+        self.graph_power.xaxis.set_major_locator(LinearLocator(numticks=7))
+        self.graph_error.xaxis.set_major_locator(LinearLocator(numticks=7))
 
-        # Create figure and add subplots
-        self.fig = Figure()
-        self.graph_predict = self.fig.add_subplot(211) # Target versus prediction
-        self.graph_error = self.fig.add_subplot(212) # Error (target - prediction)
+        # Rotate dates slightly
+        plt.setp(self.graph_power.get_xticklabels(), rotation=10)
+        plt.setp(self.graph_error.get_xticklabels(), rotation=10)
 
-        # Set titles and axis labels for both graphs
-        #self.fig.suptitle("Sequential BLR: Prediction and Error", fontsize=18)
-        #self.graph_predict.set_title("Prediction vs. Target")
-        #self.graph_predict.set_xlabel("Time")
-        self.graph_predict.set_ylabel("Power (Watts)")
-        #self.graph_error.set_title("Error (Prediction minus Target)")
-        #self.graph_error.set_xlabel("Time")
-        self.graph_error.set_ylabel("Error (Watts)")
-
-        # Add lines and legend
-        x, y = [1, 2], [0, 0]
-        self.predict_line, = self.graph_predict.plot(x, y, color='0.75')
-        self.target_line, = self.graph_predict.plot(x, y, color='blue', linestyle='--')
-        self.error_line, = self.graph_error.plot(x, y, color='red')
-
-        self.graph_predict.legend([self.target_line, self.predict_line], ["Target", "Prediction"])
-        self.graph_error.legend([self.error_line], ["Error"])
-
-        # Sets the x-axis to only show hours, minutes, and seconds of time
-        self.graph_predict.xaxis.set_major_formatter(DateFormatter("%m-%d %H:%M:%S"))
-        self.graph_error.xaxis.set_major_formatter(DateFormatter("%m-%d %H:%M:%S"))
-
-        # Sets the x-axis to only show 6 tick marks
-        self.graph_predict.xaxis.set_major_locator(LinearLocator(numticks=6))
-        self.graph_error.xaxis.set_major_locator(LinearLocator(numticks=6))
-
-        # Angle the labels slightly so they are more distinguishable
-        labels = self.graph_predict.get_xticklabels()
-        plt.setp(labels, rotation=10)
-        labels = self.graph_error.get_xticklabels()
-        plt.setp(labels, rotation=10)
-
-        # Tk canvas and toolbar which are embedded into application
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self)
-        self.canvas.get_tk_widget().pack(side='bottom', fill='both', expand=True)
-        toolbar = NavigationToolbar2TkAgg(self.canvas, self)
-        toolbar.update()
-        self.canvas._tkcanvas.pack(side='top', fill='both', expand=True)
-
-
-    # Check the queue for new data and graph if exists
-    def checkQueue(self):
+        # Let graph expand with window
+        self.setSizePolicy(QtGui.QSizePolicy.Expanding,
+                           QtGui.QSizePolicy.Expanding)
+        self.updateGeometry()
+        self.fig.tight_layout()
+        self.draw()
         
-        # If there is data, graph it. If not, whatever
-        try:
-            contents = self.graph_queue.get(block=False)
-        except QueueEmpty:
-            pass
-        else:
-                
-            # Check if this is graph info or anomaly info
-            if len(contents) == 4:
-                if   contents[0] == 'a': self.graph_anomalies(*(contents[1:]))
-                elif contents[0] == 'd': self.graph(*(contents[1:]))
+    # Update the graph using the given data
+    # 'times' should be datetime objects
+    # 'target' should be float values in Watts
+    # 'predict' should be float values in Watts
+    def graphData(self, times, target, predict):
+        assert(len(times) == len(target))
+        assert(len(times) == len(predict))
 
-        # Always schedule another check in a reasonable amount of time
-        # DO NOT change to after_idle! Program will freeze
-        self.after(200, self.checkQueue)
+        # Convert to kW and generate error line
+        target = [i/1000.0 for i in target]
+        predict = [i/1000.0 for i in predict]
+        error = [predict[i] - target[i] for i in xrange(len(times))]
 
-
-    # Anomaly stuff
-    def graph_anomalies(self, start, end, count):
-
-        # Time should be UNIX timestamp. Convert to datetime
-        start = dt.datetime.fromtimestamp(start)
-        end = dt.datetime.fromtimestamp(end)
-        
-        if   count > 0  and count <= 10: color = 'green'
-        elif count > 10 and count <= 20: color = 'orange'
-        elif count > 20 and count <= 30: color = 'red'
-        else: return
-
-        self.graph_predict.axvspan(xmin=start, xmax=end, color=color, alpha=0.3)
-
-
-    # Plot the data
-    def graph(self, y_time, y_target, y_predict):
-
-        # Time could be datetime string or UNIX timestamp
-        try:
-            y_time = [dt.datetime.fromtimestamp(float(t)) for t in y_time]
-        except ValueError:
-            y_time = [dt.datetime.strptime(t, DATE_FORMAT) for t in y_time]
-
-    
-        # Time should be UNIX timestamp. Convert to datetime
-        #y_time = [dt.datetime.fromtimestamp(t) for t in y_time]
-
-        # Calculate the error vector
-        y_error = []
-        for i in xrange(len(y_target)):
-            y_error.append(y_predict[i] - y_target[i])
-
-        # Set x and y axis limits
-        # Axes update every time to achieve "scrolling" effect
-        xmin = min(y_time)
-        xmax = max(y_time)
-
-        ymin = 0.0
-        #ymin = min(min(y_target), min(y_predict))
-        ymax = max(max(y_target), max(y_predict))
-
-        emin = min(y_error)
-        emax = max(y_error)
-
-        self.graph_predict.set_xlim(xmin, xmax)
-        self.graph_predict.set_ylim(ymin, ymax)
-
+        # Determine new bounds of graph
+        xmin = min(times)
+        xmax = max(times)
+        ymin = 0
+        ymax = max(max(target), max(predict)) * 1.1
+        emin = min(error)
+        emax = max(error)
+        self.graph_power.set_xlim(xmin, xmax)
+        self.graph_power.set_ylim(ymin, ymax)
         self.graph_error.set_xlim(xmin, xmax)
         self.graph_error.set_ylim(emin, emax)
-        #self.graph_error.set_ylim(-1000, 1000)
 
-        # Set new data and graph
-        self.predict_line.set_data(y_time, y_predict)
-        self.target_line.set_data(y_time, y_target)
-        self.error_line.set_data(y_time, y_error)
-
-        labels = self.graph_predict.get_xticklabels()
-        plt.setp(labels, rotation=10)
-        labels = self.graph_error.get_xticklabels()
-        plt.setp(labels, rotation=10)
-
+        # Set data to lines and re-draw graph
+        self.predict_line.set_data(times, predict)
+        self.target_line.set_data(times, target)
+        self.error_line.set_data(times, error)
         self.fig.tight_layout()
-        self.canvas.show()
+        self.draw()
 
-        
-##############################  GRAPHER CLASS  ##############################
-class Grapher:
+    # Add a vertical color span to the target-prediction graph
+    # 'start' should be a datetime (preferably in range)
+    # 'duration' should be the width of the span in minutes
+    # 'color' should be a string describing an _acceptable_ color value
+    def colorSpan(self, start, duration, color):
+        end = start + dt.timedelta(minutes=duration)
+        span = self.graph_power.axvspan(xmin=start, xmax=end, color=color, alpha=0.2)
+        self.color_spans.append(span)
+        self.fig.tight_layout()
+        self.draw()
 
-    # Create the transfer queue and start the graph process
-    def __init__(self):
-        self.graph_queue = Queue() # Queue for transferring graph data
-        self.graph_proc = Process(target=self.start)
-        self.graph_proc.start() #, args=(self.graph_queue,)).start()
-
-    # Open the new grapher window and run it
-    def start(self):
-        root = Tk.Tk()
-        initWindow(root, "Results Graph")
-        graph_frame = GraphFrame(master=root, queue=self.graph_queue)
-        graph_frame.pack(side='right', fill='both', expand=True)
-        Tk.mainloop()
-
-    # Add anomaly rerort to the graph queue
-    def graph_anomalies(self, start, end, count):
-        self.graph_queue.put(('a', start, end, count))
-
-    # Add data to the graph queue for the grapher to pick up
-    def graph(self, y_time, y_target, y_predict):
-        self.graph_queue.put(('d', y_time, y_target, y_predict))
-
-    # Delete the process at the end of the program (if you want)
-    def close(self):
-        self.graph_proc.terminate()
+    # Remove all vertical color spans
+    def clearSpans(self):
+        for span in self.color_spans:
+            span.remove()
+        self.color_spans = []
+        self.fig.tight_layout()
+        self.draw()
 
 
-##############################  CSV FUNCTIONS  ##############################
-
-# Read in a results file and return the three data lists
-def readResults(csvfile):
-    with open(csvfile, 'rb') as infile:
-        reader = csv.reader(infile)
-        reader.next() #Skip header row
-        y_time, y_target, y_predict = [], [], []
-        
-        for row in reader:
-            
-            # Make sure none of the entries was corrupted
-            #try:    y_time.append(float(row[0]))
-            #except: break
-            y_time.append(row[0])
-
-            try:    y_target.append(float(row[1]))
-            except: y_time.pop(); break
-            
-            try:    y_predict.append(float(row[2]))
-            except: y_time.pop(); y_target.pop(); break
-
-    return y_time, y_target, y_predict
-
-
-# Save results to a file for later graphing
-# 'csvfile' is the name of the file to be written to
-# 'results' is a tuple of iterables of the same length with the data to write
-def writeResults(csvfile, results):
-    with open(csvfile, 'wb') as outfile:
-        writer = csv.writer(outfile)
-        row_list = zip(*results) #Get columns out of rows
-        for row in row_list:
-            writer.writerow(row)
-            
-
-##############################  CSV CLASS  ##############################
-class CSV:
+# Main application window - creates the widgets and the window
+class ResultsWindow(QtGui.QMainWindow):
 
     # Constructor
-    def __init__(self, datafile = DEFAULT_FILE):
-        self.datafile = datafile
+    def __init__(self):
+        super(ResultsWindow, self).__init__()
+        self.setGeometry(50, 50, 1200, 800)
+        self.setWindowTitle('Results Grapher')
+        self.setWindowIcon(QtGui.QIcon(icon_file))
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
+        # Create top-level widget and immediate children
+        self.statusBar()
+        main_widget = QtGui.QWidget()
+        self.graph_widget = self.graphWidget()
+        self.settings_widget = self.settingsWidget()
 
-    # Reset the CSV and write the header
-    # Deletes all previous data in the file
-    def clear(self):
-        with open(self.datafile, 'wb') as outfile:
-            outfile.write('Time,Target,Prediction\n') # Write the header
+        # Add children to layout and set focus to main widget
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(self.graph_widget)
+        layout.addWidget(self.settings_widget)
+        main_widget.setLayout(layout)
+        main_widget.setFocus()
+        self.setCentralWidget(main_widget)
 
-    # Append given data to the CSV file
-    def append(self, y_time, y_target, y_predict):
+        self.show()
+        
+    ##############################  WIDGET FUNCTIONS  ##############################
+    # These functions create all the widgets, sub-widgets, etc. of the program.
+    # Each function creates a new widget instance, adds all necessary layouts
+    # and sub-widgets, and then returns its widget to the widget above.
 
-        file = open(self.datafile, 'ab')
+    # Create an instance of the ResultsGraph widget
+    def graphWidget(self):
+        main_widget = QtGui.QWidget(self)
+        layout = QtGui.QVBoxLayout()
+        self.canvas = ResultsGraph(main_widget, width=5, height=4, dpi=80)
+        toolbar = NavigationToolbar(self.canvas, main_widget)
 
-        assert(len(y_time) == len(y_target))
-        assert(len(y_time) == len(y_predict))
+        layout.addWidget(self.canvas)
+        layout.addWidget(toolbar)
+        main_widget.setLayout(layout)
+        return main_widget
 
-        # y_time should be a list of UNIX timestamps
-        y_time = [dt.datetime.fromtimestamp(float(t)).strftime(DATE_FORMAT) for t in y_time]
-        y_target = [str(t) for t in y_target]
-        y_predict = [str(t) for t in y_predict]
+    # Create the settings window below the grapher
+    def settingsWidget(self):
+        main_widget = QtGui.QWidget(self)
+        file_widget = self.fileWidget(main_widget)
+        self.options_widget = self.optionsWidget(main_widget)
+        self.options_widget.setDisabled(True)
 
-        for i in xrange(len(y_time)):
-            file.write(y_time[i] + ',' +  y_target[i] + ',' + y_predict[i] + '\n')
-        file.close()
+        layout = QtGui.QHBoxLayout(main_widget)
+        layout.addWidget(file_widget)
+        layout.addWidget(self.options_widget)
+        main_widget.setLayout(layout)
+        return main_widget
 
+    # Creates the filename bar and browse button
+    def fileWidget(self, parent):
+        main_widget = QtGui.QWidget(parent)
+        layout = QtGui.QGridLayout()
+        
+        file_label = QtGui.QLabel("Results file: ", main_widget)
+        file_label.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
+        self.start_label = QtGui.QLabel(" ", main_widget)
+        self.end_label = QtGui.QLabel(" ", main_widget)
+        self.file_edit = QtGui.QLineEdit(main_widget)
+        browse = QtGui.QPushButton('Browse...')
+        browse.clicked.connect(self.browseFile)
+        
+        layout.addWidget(file_label, 0, 0)
+        layout.addWidget(self.file_edit, 1, 0)
+        layout.addWidget(browse, 1, 1)
+        layout.addWidget(self.start_label, 2, 0)
+        layout.addWidget(self.end_label, 3, 0)
+        
+        main_widget.setLayout(layout)
+        return main_widget
 
-    # Read the data in the CSV file and return results
-    # Target and prediction are floats, time contains strings
-    def read(self):
+    # Creates the options panel to toggle smoothing and anomalies
+    def optionsWidget(self, parent):
+        main_widget = QtGui.QWidget(parent)
+        layout = QtGui.QFormLayout()
 
-        file = open(self.datafile, "rb")
-        file.next() # Throw out the header row
+        self.options_label = QtGui.QLabel("Options:", main_widget)
+        self.options_label.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
+        #self.options_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.smooth_box = QtGui.QCheckBox("Smooth data (minutes):    ", main_widget)
+        self.smooth_box.stateChanged.connect(self.smoothToggled)
+        self.smooth_edit = QtGui.QLineEdit(main_widget)
+        self.smooth_edit.setText('0')
+        self.smooth_edit.setDisabled(True)
+        self.anomaly_box = QtGui.QCheckBox("Show anomalies", main_widget)
+        self.anomaly_box.stateChanged.connect(self.anomalyToggled)
+        #reset = QtGui.QPushButton("Reset", main_widget)
+        #reset.clicked.connect(self.resetOptions)
+        update = QtGui.QPushButton("Update Graph", main_widget)
+        update.clicked.connect(self.updateGraph)
+        
+        layout.addRow(self.options_label)
+        layout.addRow(self.smooth_box, self.smooth_edit)
+        layout.addRow(self.anomaly_box)
+        layout.addRow(update)
+        
+        main_widget.setLayout(layout)
+        return main_widget
+        
+    ##############################  HELPER FUNCTIONS  ##############################
+    # These functions do the actual work of the program.
+    # Most are called in response to an event triggered by the main window, while
+    # others are helper functions which perform a simple task.
 
-        y_time, y_target, y_predict = [], [], []
+    # Return true if the given filename is valid, false otherwise
+    def checkFilename(self, filename):
+        if filename == '':
+            self.statusBar().showMessage("Error: no file name given")
+            return False
+        elif filename[-4:] != '.csv':
+            self.statusBar().showMessage("Error: file must be '.csv' format")
+            return False
+        return True
+        
+    # Open the file search dialog window and get the resulting filename
+    def browseFile(self):
+        filename = str(QtGui.QFileDialog.getOpenFileName())
+        self.file_edit.setText(filename)
+        if (filename != ''):
+            self.loadFile()
+            self.canvas.graphData(self.times, self.target, self.predict)
+            self.options_widget.setEnabled(True)
+            self.statusBar().showMessage("Graphing complete.", 5000)
 
-        for line in file:
-            line = line.rstrip() #Remove newline
-            data = line.split(',')
+    # Load data from the file given by filename
+    def loadFile(self):
+        filename = str(self.file_edit.text())
 
-            # Only grow list if CSV was written properly
-            if len(data) == 3:
+        if self.checkFilename(filename):
+            try:
+                file = open(filename, 'rb')
+            except:
+                filename = os.path.basename(filename)
+                self.statusBar().showMessage(
+                    "Error: file %s was not found" % filename)
+            else:
+                reader = csv.reader(file)
+                headers = reader.next()
 
-                # Could be a timestamp or a datetime string
+                self.times = []
+                self.target = []
+                self.predict = []
+                self.anomalies = []
+                for row in reader:
+                    self.times.append(row[0])
+                    self.target.append(float(row[1]))
+                    self.predict.append(float(row[2]))
+                    try:
+                        self.anomalies.append(float(row[3]))
+                    except IndexError:
+                        pass
+                file.close()
+
+                # Convert times from string or timestamp to datetime
                 try:
-                    y_time.append(float(data[0]))
+                    self.times = [
+                        dt.datetime.fromtimestamp(float(t)) for t in self.times]
                 except ValueError:
-                    y_time.append(data[0])
+                    self.times = [
+                        dt.datetime.strptime(t, DATE_FORMAT) for t in self.times]
 
-                y_target.append(float(data[1]))
-                y_predict.append(float(data[2]))
+                self.start_label.setText(
+                    "Start time: %s" % dt.datetime.strftime(self.times[0], DATE_FORMAT))
+                self.end_label.setText(
+                    "End time: %s" % dt.datetime.strftime(self.times[-1], DATE_FORMAT))
+                
+    # Decide what to do based on the state of the smooth checkbox
+    def smoothToggled(self, state):
+        if state == QtCore.Qt.Checked:
+            self.smooth_edit.setEnabled(True)
+        else:
+            self.smooth_edit.setDisabled(True)
+            self.smooth_edit.setText('0')
+            
+    # Decide what to do based on the state of the anomaly checkbox
+    def anomalyToggled(self, state):
+        if state == QtCore.Qt.Checked:
+            self.showAnomalies()
+        else:
+            self.canvas.clearSpans()
+    
+    # Decide what to do based on the state of the smooth checkbox
+    def updateGraph(self):
+        try:
+            smoothing_window = int(self.smooth_edit.text())
+        except:
+            error_window = QtGui.QErrorMessage(self)
+            error_window.showMessage("Smoothing window must be integer value.")
+        else:
+            if smoothing_window > 0:
+                self.canvas.graphData(
+                    self.times,
+                    movingAverage(self.target, smoothing_window),
+                    movingAverage(self.predict, smoothing_window))
+            else:
+                self.canvas.graphData(self.times, self.target, self.predict)
+            self.statusBar().showMessage("Graphing complete.", 5000)
+                
+    # Reset the settings to default and draw the original graph
+    def resetOptions(self):
+        self.smooth_box.setCheckState(QtCore.Qt.Unchecked)
+        self.anomaly_box.setCheckState(QtCore.Qt.Unchecked)
+        self.canvas.clearSpans()
+        self.canvas.graphData(self.times, self.target, self.predict)
 
-        file.close()
+    # Draw colored bars to show regions where anomalies happened
+    def showAnomalies(self):
+        self.settings_widget.setDisabled(True)
+        loading_win = LoadingWindow()
+
+        count = 0
+        anomaly_count = 0
+        start = self.times[0]
+        dur = 60
+        level1 = 0
+        level2 = dur / 3.0
+        level3 = level2 * 2
+        self.canvas.clearSpans() #Clear any existing spans
+
+        for i in self.anomalies:
+            anomaly_count += self.anomalies[count]
+            if ((count+1) % dur) == 0:
+                if anomaly_count >   level3: self.canvas.colorSpan(start, dur, 'red')
+                elif anomaly_count > level2: self.canvas.colorSpan(start, dur, 'orange')
+                elif anomaly_count > level1: self.canvas.colorSpan(start, dur, 'green')
+                anomaly_count = 0
+                start = self.times[count]
+                QtGui.QApplication.processEvents()
+            count += 1
         
+        self.settings_widget.setEnabled(True)
+        loading_win.close()
+
+
+# Create a "loading window" which has an infinitely running progress bar
+class LoadingWindow(QtGui.QDialog):
+
+    def __init__(self):
+        super(LoadingWindow, self).__init__(None, QtCore.Qt.WindowStaysOnTopHint)
+        self.setWindowTitle(' ')
+        self.setWindowIcon(QtGui.QIcon(icon_file))
+
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(QtGui.QLabel("Calculating. Please wait...", self))
+        progress = QtGui.QProgressBar(self)
+        progress.setMinimum(0)
+        progress.setMaximum(0)
+        layout.addWidget(progress)
+        self.setLayout(layout)
+        self.show()
         
-
-        return y_time, y_target, y_predict
-
-
-        
-##############################  STATISTICS  ##############################
-
-# Prediction Mean Squared Error
-def print_stats(y_target, y_predict, smoothing_win=120):
-
-    T = len(y_target)
-    y_target = np.asarray(y_target)
-    y_predict = np.asarray(y_predict)
-
-    try:
-        y_target_smoothed = movingAverage(y_target, smoothing_win)
-        y_predict_smoothed = movingAverage(y_predict, smoothing_win)
-    except ValueError as e:
-        print repr(e)
-        print "Error: Smoothing window cannot be larger than number of data points"
-        y_target_smoothed = movingAverage(y_target, 1)
-        y_predict_smoothed = movingAverage(y_predict, 1)
-
-    # Prediction Mean Squared Error (smooth values)
-    PMSE_score_smoothed = np.linalg.norm(y_target_smoothed-y_predict_smoothed)**2 / T
-    # Prediction Mean Squared Error (raw values)
-    PMSE_score = np.linalg.norm(y_target - y_predict)**2 / T
-    # Relative Squared Error
-    Re_MSE = np.linalg.norm(y_target-y_predict)**2 / np.linalg.norm(y_target)**2
-    # Standardise Mean Squared Error
-    SMSE =  np.linalg.norm(y_target-y_predict)**2 / T / np.var(y_target)
-
-    print "---------------------------------------------------------------------------"
-    print "%20s |%20s |%15s |%10s "  % ("RMSE-score (smoothed)", "RMSE-score (raw)", "Relative MSE", "SMSE")
-    print "%20.2f  |%20.2f |%15.2f |%10.2f " % (np.sqrt(PMSE_score_smoothed), np.sqrt(PMSE_score), Re_MSE, SMSE)
-    print "---------------------------------------------------------------------------"
-
 
 ##############################  MAIN  ##############################
 def main():
+    app = QtGui.QApplication(sys.argv)
+    toplevel = ResultsWindow()
+    sys.exit(app.exec_())
 
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description='Graph data from a file using matplotlib tools.')
-
-    parser.add_argument('-n', '--nograph', action='store_true',
-                        help='show only statistics, no graph')
-    parser.add_argument('-r', '--realtime', nargs='?',metavar = 'TIME', const=5, type=int,
-                        help='update the graph in realtime every TIME seconds (default 5)')
-    parser.add_argument('-s', '--smooth', nargs='?', metavar='WINDOW', const=120, type=int,
-                        help='smooth data with a smoothing window of WINDOW (default 120)')
-    parser.add_argument('-f', '--file', metavar='FILE', type=str,
-                        help='specify which file to read data from')
-
-    args = parser.parse_args()
-
-
-    # Get the filename if -f was set
-    if args.file != None: filename = args.file
-    else:                 filename = 'results.csv'
-
-    # If -n set, show statistics and then exit cleanly
-    if args.nograph:
-        y_time, y_target, y_predict = readResults(filename)
-        print "\nStatistics:"
-        print_stats(y_target, y_predict)
-        exit(0)
-
-    # Otherwise, create the grapher
-    grapher = Grapher()
-
-    # Get the period if -r was set
-    try:    period = float(args.realtime)
-    except: period = 0
-
-    # Get the smoothing rate if -s was set
-    try:    smooth = int(args.smooth)
-    except: smooth = 0
-
-    # If -r was set, this loop will continuously graph the data
-    # in the given filename every T seconds. If not, the loop
-    # will run only once and the program will close when the window
-    # closes.
-    while True:
-
-        y_time, y_target, y_predict = readResults(filename)
-
-        current_time = y_time[-1]
-        print "\nAt time %s" % str(current_time)
-        
-        print_stats(y_target, y_predict)
-
-        # Smooth data if requested
-        if smooth > 0:
-            y_target = movingAverage(y_target, args.smooth)
-            y_predict = movingAverage(y_predict, args.smooth)
-            
-        grapher.graph(y_time, y_target, y_predict)
-
-        # If running realtime, reschedule another update
-        if period > 0.0:
-            time.sleep(period)
-        else:
-            print "\nClose window to exit"
-            sys.exit(0)
-
-# If run as main:
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

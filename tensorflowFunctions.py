@@ -8,7 +8,7 @@ import tensorflow as tf
 
 graph = tf.Graph()
 
-## Tensorflow Train ###
+#==================== TENSORFLOW TRAIN ====================#
 def tf_train(X_train, y_train):
 
     # In order to prevent memory leaks from re-making the graph every time,
