@@ -9,7 +9,7 @@ data/*
 algoRun
 tensorflow
 *.bak
-*.csv
+*csv
 *config.json
 nextenergy_sensors.json
 !sample.config.json

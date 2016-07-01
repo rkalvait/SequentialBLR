@@ -67,7 +67,7 @@ def main():
     
     #algo.setSeverityParameters(w=0.53, L=3.714) # Most sensitive
     #algo.setSeverityParameters(w=0.84, L=3.719) # Medium sensitive
-    algo.setSeverityParameters(w=1, L=3.719) # Least sensitive
+    algo.setSeverityParameters(w=1, L=5.5) # Least sensitive
     #algo.setSeverityParameters(w=1.00, L=3.9) # Most sensitive
     
     detected = set()
@@ -103,18 +103,24 @@ def main():
                 anomalies.append(1)
             else:
                 anomalies.append(0)
-        '''        
+
+
+        #July
+        if(cur_time >= 1341792000 and cur_time <= 1341794700):
+            ground_truth.add(cur_time)
+        '''
+        #JUNE        
         if(cur_time >= 1339700400 and cur_time <= 1339704000):
             ground_truth.add(cur_time)
         if(cur_time >= 1340064000 and cur_time < 1340066700):
             ground_truth.add(cur_time)
-        '''
-
+        #''
+        #MAY
         if(cur_time >= 1337022000 and cur_time <= 1337025600):
             ground_truth.add(cur_time)
         if(cur_time >= 1337385600 and cur_time <= 1337388300):
             ground_truth.add(cur_time)
- 	#'''	
+ 	'''	
 
     ##############################  GRAPHING/STATS  ##############################
          
