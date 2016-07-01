@@ -1,226 +1,431 @@
-#!/usr/bin/python -O
+#!/usr/bin/env python
 
-# Version of pi_seq_BLR compatible with app.py
-# Filename:     pi_seq_BLR_AVG.py
+"""Visual tool for analyzing data and creating results graphs
+# Filename:     analyzer2.py
 # Author(s):    apadin
-# Start Date:   6/8/2016
+# Start Date:   2016-06-29
+
+"""
 
 
-############################## LIBRARIES ##############################
-import datetime as dt
-import time
+#==================== LIBRARIES ====================#
+
+import os
 import sys
-import json
-import logging
+import csv
+import time
+import datetime as dt
 import numpy as np
-from grapher import DATE_FORMAT
-from algoRunFunctions import train, severityMetric
-from get_data import get_data, get_power
-from zwave_api import ZWave
-import pickle
+
+from matplotlib import pyplot as plt
+from matplotlib.dates import DateFormatter
+from matplotlib.ticker import LinearLocator
+from matplotlib.backends import qt_compat
+from matplotlib.backends.backend_qt4agg import (
+    FigureCanvasQTAgg as FigureCanvas,
+    NavigationToolbar2QT as NavigationToolbar)
+from matplotlib.figure import Figure
+from PyQt4 import QtGui, QtCore
+
+from param import *
+from algo import Algo
+from attacker import MyCanvas as PowerGraph
+from attacker import AttackDialog
+from grapher import LoadingWindow, ResultsGraph
+from algoFunctions import f1_scores, print_stats, readResults, writeResults
 
 
-############################## PARAMTERS ##############################
-Xdata_LOG_FILENAME = "X_DATA2.bak"
-Xog_LOG_FILENAME = "Xog_DATA2.bak"
-LOG_FILENAME = "/var/log/sequential_predictions2.log"
+#==================== GUI CLASSES ====================#
 
-THRESHOLD = 10000
+class MainWindow(QtGui.QMainWindow):
+
+    """The main window of the application."""
+
+    def __init__(self):
+        """Initialize the main window and create all child widgets."""
+
+        super(MainWindow, self).__init__()
+        self.setGeometry(50, 50, 1200, 600)
+        self.setWindowTitle('CSV Data Analysis')
+        self.setWindowIcon(QtGui.QIcon(icon_file))
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+
+        # Widget creation
+        self.statusBar()
+        self.mainWidget = self.createWidgets()
+        self.mainWidget.setFocus()
+        self.setCentralWidget(self.mainWidget)
+        self.show()
 
 
-############################## ANALYZER ##############################
-def analyze(granularity, training_window, forecasting_interval, queue):
+    #==================== WIDGETS ====================#
 
+    def createWidgets(self):
+        """Create the main widget and all children."""
 
-    ############################## INITIALIZE ##############################
-    print ("Starting \"Merit Energy Analysis\" with settings: %d %d %d" %
-           (granularity, training_window, forecasting_interval))
-
-    # Logging analysis results
-    FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-    logging.basicConfig(filename=LOG_FILENAME,
-                        level=logging.DEBUG,
-                        format=FORMAT,
-                        datefmt=DATE_FORMAT)
-
-    logging.info("Starting \"Merit Energy Analysis\" with settings: %d %d %d" %
-                 (granularity, training_window, forecasting_interval))
-
-    # Initialize Zwave server to collect sensor data
-    with open("./config/config.json") as config_fh:
-        config_dict = json.load(config_fh)
-    with open("./config/sensors.json") as device_fh:
-        device_dict = json.load(device_fh)
-    ZServer = ZWave(config_dict["z_way_server"]["host"],
-                         config_dict["z_way_server"]["port"],
-                         device_dict)
-
-    # num_sensors           -> Number of sensors in ZWave network
-    # matrix_length         -> Number of rows in data matrix (X)
-    # forecasting_interval  -> Time between training sessions
-    # granularity           -> Time between sensor measurements
-    num_sensors = len(ZServer.get_data_keys())
-    matrix_length = training_window * (60 / granularity)
-    forecasting_interval = forecasting_interval * (60 / granularity)
-    granularity_in_seconds = granularity * 60
-
-    # Number of counts to average over
-    avg_over = 5
-
-    # Load backup files if possible
-    X = np.zeros([matrix_length, num_sensors+1])
-    X_og = np.zeros([avg_over, num_sensors+1])
-    init_training = False
-    try:
-        logged_Xdata = pickle.load(open(Xdata_LOG_FILENAME, 'r'))
-        logged_Xog = pickle.load(open(Xog_LOG_FILENAME, 'r'))
-    except IOError:
-        logging.warning("One or more backup files not found. Continuing without backups.")
-    else:
-        if (np.shape(logged_Xdata) == (matrix_length, num_sensors+1) and
-            np.shape(logged_Xog) == (avg_over, num_sensors+1)):
-
-            logging.info("Backup files found. Using backups.")
-            X = logged_Xdata
-            X_og = logged_Xog
-            init_training = True
-        else:
-            logging.warning("Backup files found but not properly formatted. Continuing without backups.")
-
-    # Prepare the graphing arrays
-    y_target, y_predict, y_time = [], [], []
-
-    row_count = 0
-
-    # Prepare the timer
-    goal_time = time.time()
-    goal_time = goal_time - (goal_time % 60)
-
-    ############################## ANALYZE ##############################
-    while True:
-
-        # Record the time of the next iteration
-        goal_time += granularity_in_seconds
+        mainWidget = QtGui.QWidget(self)
         
-        # Wake up periodically to check time and kill_flag
-        while goal_time > time.time():
-            time.sleep(0.1)
-            
-            '''
-            app.lock.acquire()
-            if app.kill_flag:
-                app.lock.release()
+        # Left-side is sidebar
+        self.sidebarLayout = QtGui.QVBoxLayout()
+        self.fileWidget = self.createFileWidget()
+        self.attackWidget = self.createAttackWidget()
+        self.attackWidget.setEnabled(False)
+        self.algoWidget = self.createAlgoWidget()
+        self.algoWidget.setEnabled(False)
+        self.sidebarLayout.addWidget(self.fileWidget)
+        self.sidebarLayout.addWidget(self.attackWidget)
+        self.sidebarLayout.addWidget(self.algoWidget)
+        self.sidebarLayout.addWidget(QtGui.QLabel(""), stretch=1)
 
-                print "exiting program"
-                logging.error("Analysis ended by user. Ending program.")
-                sys.exit(0)
-                
-            app.lock.release()
-            '''
+        # Right-side is graph and toolbar
+        #self.resultsGraph = ResultsGraph(parent=mainWidget)
+        #self.resultsGraph.hide()
+        self.graphWidget = QtGui.QWidget(mainWidget)
+        self.powerGraph = PowerGraph(self.graphWidget)
+        self.toolbar = NavigationToolbar(self.powerGraph, self.graphWidget)
+        self.graphLayout = QtGui.QVBoxLayout()
+        self.graphLayout.addWidget(self.powerGraph)
+        self.graphLayout.addWidget(self.toolbar)
 
-        print "getting data"
+        # Add children to layout and set focus to main widget
+        mainLayout = QtGui.QHBoxLayout()
+        mainLayout.addLayout(self.sidebarLayout)
+        mainLayout.addLayout(self.graphLayout, stretch=1)
+        mainWidget.setLayout(mainLayout)
+        return mainWidget
 
-        # Retrieve sensor data from ZServer
+    def createFileWidget(self):
+        """Create the file browsing section"""
+
+        title = QtGui.QLabel("Choose the input file: ", self)
+        title.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
+        mainWidget = QtGui.QWidget(self)
+
+        self.inputEdit = QtGui.QLineEdit(mainWidget)
+        self.inputEdit.setEnabled(False)
+        self.attackEdit = QtGui.QLineEdit(mainWidget)
+        self.resultsEdit = QtGui.QLineEdit(mainWidget)
+        
+        formLayout = QtGui.QFormLayout()
+        formLayout.addRow(title)
+        formLayout.addRow("Input file: ", self.inputEdit)
+        formLayout.addRow("Attack file: ", self.attackEdit)
+        formLayout.addRow("Results file: ", self.resultsEdit)
+        formLayout.setVerticalSpacing(8)
+        
+        spacer = QtGui.QLabel("", mainWidget)
+        spacer.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
+        browse = QtGui.QPushButton('Browse...', mainWidget)
+        browse.clicked.connect(self.browseFile)
+        save = QtGui.QPushButton('Save', mainWidget)
+        save.clicked.connect(self.saveAttackFile)
+        
+        buttonLayout = QtGui.QFormLayout()
+        buttonLayout.addWidget(spacer)
+        buttonLayout.addWidget(browse)
+        buttonLayout.addWidget(save)
+
+        mainLayout = QtGui.QHBoxLayout()
+        mainLayout.addLayout(formLayout)
+        mainLayout.addLayout(buttonLayout)
+        mainWidget.setLayout(mainLayout)
+        return mainWidget
+
+    def createAttackWidget(self):
+        """Create the attack section."""
+
+        # TODO: Keep track of attacks so they can be removed later
+        self.attackList = []
+
+        mainWidget = QtGui.QWidget(self)
+        title = QtGui.QLabel("Inject Attacks: ", mainWidget)
+        title.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
+        attackButton = QtGui.QPushButton("Add Attack...", mainWidget)
+        attackButton.clicked.connect(self.addAttack)
+        clearButton = QtGui.QPushButton("Clear All", mainWidget)
+        clearButton.clicked.connect(self.clearAttacks)
+        buttonLayout = QtGui.QHBoxLayout()
+        buttonLayout.addWidget(attackButton)
+        buttonLayout.addWidget(clearButton)
+        
+        self.attackLayout = QtGui.QVBoxLayout()
+        self.attackLayout.addWidget(title)
+        self.attackLayout.addLayout(buttonLayout)
+        mainWidget.setLayout(self.attackLayout)
+        return mainWidget
+
+    def createAlgoWidget(self):
+        """Create the analysis section."""
+
+        mainWidget = QtGui.QWidget(self)
+        title = QtGui.QLabel("Run Analysis: ", mainWidget)
+        title.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
+
+        #TODO: input validation
+        self.emaEdit = QtGui.QLineEdit("1.0", self)
+        self.severityButton1 = QtGui.QRadioButton("w=0.53, L=3.714", mainWidget)
+        self.severityButton2 = QtGui.QRadioButton("w=0.84, L=3.719", mainWidget)
+        self.severityButton3 = QtGui.QRadioButton("w=1.00, L=3.719", mainWidget)     
+        self.severityButton3.toggle()
+        severityLayout = QtGui.QVBoxLayout()
+        severityLayout.addWidget(self.severityButton3)
+        severityLayout.addWidget(self.severityButton2)
+        severityLayout.addWidget(self.severityButton1)
+        startButton = QtGui.QPushButton("Start Analysis", mainWidget)
+        startButton.clicked.connect(self.startAnalysis)
+
+        layout = QtGui.QFormLayout()
+        layout.addRow(title)
+        layout.addRow("EMA level (value in range (0, 1]): ", self.emaEdit)
+        layout.addRow("Severity sensitivity parameters: ", severityLayout)
+        layout.addRow(startButton)
+        mainWidget.setLayout(layout)
+        return mainWidget
+        
+
+    #==================== HELPER FUNCTIONS ====================#
+
+    def browseFile(self):
+        """Choose a file using the file search dialog."""
+
+        filename = str(QtGui.QFileDialog.getOpenFileName())
+        if (filename != ''):
+            self.checkInputFilename(filename) #Raises exception if not CSV file
+            self.inputEdit.setText(filename)
+            filename = filename.rstrip('.csv')
+            self.attackEdit.setText(filename + '_attacked.csv')
+            self.resultsEdit.setText(filename + '_results.csv')
+
+            self.loadInputFile() #Load times and power into self.time, self.target
+            self.powerGraph.graphData(self.time, self.target)
+            self.statusBar().showMessage("Graphing complete.", 5000)
+            self.attackWidget.setEnabled(True)
+            self.algoWidget.setEnabled(True)
+
+    def checkInputFilename(self, filename):
+        """Return if the given filename is valid, raise exception otherwise"""
+
+        if filename == '':
+            self.warningDialog("No file specified.")
+            raise ValueError("No file specified.")
+
+        elif filename[-4:] != '.csv':
+            self.warningDialog("File must have '.csv' extension.")
+            raise ValueError("File must have '.csv' extension.")
+
+    def loadInputFile(self):
+        """Load power data from the input file."""
+
+        csvfile = str(self.inputEdit.text())
+        with open(csvfile, 'rb') as infile:
+            reader = csv.reader(infile)
+            reader.next()
+            columns = zip(*reader)
+        self.time = [dt.datetime.fromtimestamp(float(t)) for t in columns[0]]
+        self.target = [float(p) for p in columns[-1]]
+        self.newTarget = self.target[:]
+        '''
+        # Convert times from string or timestamp to datetime
         try:
-            new_data = get_data(ZServer)
-        except:
-            logging.error("ZServer Connection Lost. Ending program.")
-            exit(1)
+            self.time = [dt.datetime.fromtimestamp(float(t)) for t in columns[0]]
+        except ValueError:
+            self.time = [dt.datetime.strptime(t, DATE_FORMAT) for t in columns[0]]
+        '''
 
-        print new_data
+    def addAttack(self):
+        """Open the attack dialog and get the attack parameters."""
 
-        # Retrieve energy usage reading
-        new_power = float(get_power(config_dict))
-
-        # Update X and X_og
-        X_row = row_count % matrix_length
-        X_og_row = row_count % avg_over
-
-        # new_data[0] contains a timestamp we don't need
-        X_og[X_og_row, :num_sensors] = new_data[1:]
-
-        # Average the previous readings (if X_og is ready)
-        if row_count >= (avg_over-1):
-            X[X_row, :] = np.average(X_og, axis=0) #Average of columns
+        dialog = AttackDialog(self)
+        if dialog.exec_():
+            startdate, duration, intensity = dialog.get_info()
         else:
-            X[X_row, :] = new_data
+            return
 
-        X[X_row, num_sensors] = new_power
-        X_og[X_og_row, num_sensors] = new_power
+        enddate = startdate + dt.timedelta(minutes=duration)
+        if enddate < self.time[0] or startdate > self.time[-1]:
+            self.warningDialog("Attack out of range.")
+            return
+        
+        # TODO: Catch potential StopIteration errors
+        start_id = next(id for id, val in enumerate(self.time) if val > startdate)
+        end_id = next(id for id, val in enumerate(self.time) if val > enddate)
+        while start_id < end_id:
+            self.newTarget[start_id] += intensity
+            start_id += 1
+            
+        class Attack(QtGui.QLabel):
+            def __init__(self, parent, start, duration, intensity):
+                super(Attack, self).__init__(parent)
+                self.start = start
+                self.end = start + dt.timedelta(minutes=duration)
+                self.setText("At time %s, %.2f Watts for %d minutes"
+                          % (start, intensity, duration))
 
-        print "done getting data"
+        newAttack = Attack(self, startdate, duration, intensity)
+        self.attackList.append(newAttack)
+        self.attackLayout.addWidget(newAttack)
 
-        # Train the model
-        if (row_count % forecasting_interval == 0 and
-            (row_count >= matrix_length or init_training)):
+        self.powerGraph.graphData(self.time, self.newTarget)
+        self.powerGraph.colorSpan(startdate, duration, 'red')
+        self.statusBar().showMessage("Graphing complete.", 5000)
+        self.algoWidget.setEnabled(False)
+        #print time.mktime(startdate.timetuple())
+        #print time.mktime(enddate.timetuple())
+        
+    def clearAttacks(self):
+        """Open the attack dialog and get the attack parameters."""
+        
+        for attack in self.attackList:
+            attack.deleteLater()
+        self.attackList = []
+        self.newTarget = self.target[:]
+        self.powerGraph.clear()
+        self.powerGraph.graphData(self.time, self.newTarget)
 
-            # Log current training windows as pickle files
-            with open(Xdata_LOG_FILENAME, 'wb') as logfile:
-                pickle.dump(X, logfile)
-            with open(Xog_LOG_FILENAME, 'wb') as logfile:
-                pickle.dump(X_og, logfile)
+    def saveAttackFile(self):
+        """Save the new data in the file given by attackFile."""
 
-            print "training"
+        inputFile = str(self.inputEdit.text())
+        attackFile = str(self.attackEdit.text())
+        self.checkInputFilename(attackFile)
+        with open(inputFile, 'rb') as infile, open(attackFile, 'wb') as outfile:
+            reader = csv.reader(infile)
+            writer = csv.writer(outfile)
+            writer.writerow(reader.next()) #Copy header row
+            count = 0
+            for line in reader:
+                line[-1] = self.newTarget[count]
+                writer.writerow(line)
+                count += 1
+        self.statusBar().showMessage("File %s saved" % attackFile, 5000)
+        self.algoWidget.setEnabled(True)
+                
+    def warningDialog(self, message="Unknown error occurred."):
+        warningMessage = QtGui.QMessageBox()
+        warningMessage.setWindowTitle("Warning")
+        warningMessage.setText(message)
+        warningMessage.setIcon(QtGui.QMessageBox.Warning)
+        warningMessage.exec_()
 
-            # Unwrap the matrices (put the most recent data on the bottom)
-            data = X[X_row:, :num_sensors]
-            data = np.concatenate((data, X[:X_row, :num_sensors]), axis=0)
-            y = X[X_row:, num_sensors]
-            y = np.concatenate((y, X[:X_row, num_sensors]), axis=0)
+                
+    #==================== ALGORITHM ====================#
 
-            # BLR train:
-            w_opt, a_opt, b_opt, S_N = train(data, y)
+    def startAnalysis(self):
 
-            init_training = True
+        # Get parameters
+        try:
+            alpha = float(self.emaEdit.text())
+            assert(alpha > 0.0 and alpha <= 1.0)
+        except ValueError:
+            self.warningDialog("EMA Level must be a number in range (0, 1].")
+            return
+        except AssertionError:
+            self.warningDialog("EMA Level must be in range (0, 1].")
+            return
+        
+        print "alpha: ", alpha
 
-        # Make a prediction
-        if init_training:
+        # TODO: Use attackEdit instead of inputEdit
+        if len(self.attackList) > 0: 
+            infile = str(self.attackEdit.text())
+        else:
+            infile = str(self.inputEdit.text())
+        outfile = str(self.resultsEdit.text())
+        granularity = 1
+        trainingWin = 24
+        forecastingInterval = 1
 
-            # Prediction is dot product of data and weights
-            x_test = X[X_row, :num_sensors]
-            prediction = np.inner(w_opt, x_test)
-            target = X[X_row, num_sensors]
+        print ("\nStarting analysis on %s with settings %d %d %d..." 
+               % (infile, granularity, trainingWin, forecastingInterval))
+               
+        # Get list of features (first columns is time)
+        infile = open(infile, 'rb')
+        reader = csv.reader(infile)
+        columns = reader.next()[1:]
+        
+        print "The following features were found:", columns
 
-            # Log the prediction and target results
-            logging.info("Target: " + str(target) + "\tPrediction: " + str(prediction))
-            y_target.append(target)
-            y_predict.append(prediction)
-            y_time.append(dt.datetime.fromtimestamp(goal_time).strftime('%Y-%m-%d %H:%M:%S'))
+        # Algorithm settings
+        algo = Algo(granularity, trainingWin, forecastingInterval, len(columns)-1)
+        if self.severityButton1.isChecked():
+            algo.setSeverityParameters(w = 0.53, L = 3.714)
+        elif self.severityButton2.isChecked():
+            algo.setSeverityParameters(w = 0.84, L = 3.719)
+        elif self.severityButton3.isChecked():
+            algo.setSeverityParameters(w = 1.00, L = 3.719)
+        else:
+            sys.exit(1) # impossible
 
-            # Achieve scrolling effect by only graphing most recent data
-            if len(y_time) >= matrix_length:
-                y_time = y_time[-matrix_length:]
-                y_target = y_target[-matrix_length:]
-                y_predict = y_predict[-matrix_length:]
+        y_time = ['Timestamp']
+        y_target = ['Target']
+        y_predict = ['Prediction']
+        anomalies = ['Anomaly']
 
-            queue.put((y_time, y_target, y_predict)) # app will eventually pick this up
+        detected = set()
+        ground_truth = set()
+        
+        first = True
+        
+        print "Beginning analysis..."
+        loadingWin = LoadingWindow()
+        self.mainWidget.setEnabled(False)
+        count = 0
+        for line in reader:
 
-            # Update severity metric and check for anomalies
-            error = (prediction-target)
-            sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
+            # Read new data from file
+            cur_time = float(line[0])
+            new_data = np.asarray(line[1:], np.float)
 
-            # Catch pathogenic cases where variance gets too small
-            if sigma < 1:
-                sigma = 1
+            # EWMA calculation
+            if first: last_avg = new_data
+            avg_data = last_avg + alpha * (new_data - last_avg)
+            last_avg = avg_data
 
-            mu = mu; sigma = sigma
-            Sn, Zn = severityMetric(error, mu, sigma, w, Sn_1)
+            target = float(avg_data[-1])
+            prediction = algo.run(avg_data) # Magic!
+            
+            if prediction != None:
+                y_time.append(cur_time)
+                y_target.append(target)
+                y_predict.append(float(prediction))
+                
+                if algo.checkSeverity(target, float(prediction)):
+                    detected.add(cur_time)
+                    
+                    anomalies.append(1)
+                else:
+                    anomalies.append(0)
 
-            # Report to user if error is greater than allowed threshold
-            # Uses two-in-a-row counter, much like branch prediction
-            if np.abs(Sn) <= THRESHOLD:
-                alert_counter = 0
-            elif np.abs(Sn) > THRESHOLD and alert_counter == 0:
-                alert_counter = 1
-                Sn = Sn_1
-            elif np.abs(Sn) > THRESHOLD and alert_counter == 1:
-                Sn = 0
-                alert_counter = 0
-                logging.warning("ANOMALY DETECTED")
+            cur_datetime = dt.datetime.fromtimestamp(cur_time)
+            for attack in self.attackList:
+                if(cur_datetime >= attack.start and cur_datetime < attack.end):
+                    ground_truth.add(cur_time)
+                    break
+                    
+            if (count % 60) == 0:
+                #print "Trying time: ", cur_time
+                QtGui.QApplication.processEvents()
+            count += 1
+            
+             
+        # Close the input file and save results
+        infile.close()
+        writeResults(outfile, (y_time, y_target, y_predict, anomalies))
+        self.mainWidget.setEnabled(True)
+        loadingWin.close()
+        
+        f1_scores(detected, ground_truth)
+        print_stats(y_target[1:], y_predict[1:]) #Remove header
 
-            Sn_1 = Sn
+        print "Ending analysis. See %s for results." % outfile
 
-        # Increment and loop
-        row_count += 1
+        
+#==================== MAIN ====================#
+def main():
+    app = QtGui.QApplication(sys.argv)
+    toplevel = MainWindow()
+    sys.exit(app.exec_())
 
-    print "Program killed"
+if __name__ == '__main__':
+    main()
+

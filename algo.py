@@ -1,5 +1,5 @@
 # All functions and classes for running the BLR algorithm
-# Filename:     algorithm.py
+# Filename:     algo.py
 # Author(s):    apadin, with code from dvorva, mjmor, yabskbd
 # Start Date:   5/9/2016
 
@@ -8,18 +8,16 @@ import datetime as dt
 import numpy as np
 import pickle
 
-from grapher import DATE_FORMAT
-from algoRunFunctions import train, severityMetric, runnable
+from param import DATE_FORMAT
+from algoFunctions import train, severityMetric, runnable
 
 
-##### PARAMETERS #####
+#==================== PARAMETERS ====================#
 X_BACKUP_FILENAME = 'X_backup.bak'
 RESULTS_FILENAME = 'results.csv'
 
 
-
-
-
+#==================== ALGO CLASS ====================#
 # This class defines the BLR algorithm and associated data manipulation.
 # It is meant to act in conjunction with other programs which perform data
 # collection and pass their data to Algo for analysis.
@@ -63,11 +61,13 @@ class Algo(object):
         self.row_count = 0
 
         # Results
+        '''
         self.y_time = []
         self.y_target = []
         self.y_predict = []
         self.anomalies = []
         self.results_file = RESULTS_FILENAME
+        '''
 
     # Read the previous training window from a backup file
     def fromBackup(self, filename=X_BACKUP_FILENAME):

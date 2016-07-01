@@ -1,4 +1,4 @@
-mport subprocess
+import subprocess
 
 sample_time = 1
 

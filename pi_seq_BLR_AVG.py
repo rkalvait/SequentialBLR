@@ -43,16 +43,19 @@ sound_on = arg.sound
 
 print "Initializing libraries..."
 
+import time
 import datetime as dt
+import numpy as np
 import json
 import logging
-import time
-import numpy as np
-from grapher import CSV, DATE_FORMAT
-from algoRunFunctions import train, severityMetric
+import pickle 
+
+from param import *
+from algoFunctions import train, runnable, severityMetric, writeResults
 from get_data import get_data, get_power
 from zwave_api import ZWave
-import pickle 
+
+
 ############################################################
 
 #if __name__ == "__main__":
@@ -83,6 +86,7 @@ with open("./config/config.json") as config_fh:
     config_dict = json.load(config_fh)
 with open("./config/sensors.json") as device_fh:
     device_dict = json.load(device_fh)
+    
 ZServer = ZWave(config_dict["z_way_server"]["host"],
                 config_dict["z_way_server"]["port"],
                 device_dict)
@@ -157,12 +161,10 @@ print "Starting analysis..."
 
 row_count = 0
 
-csv = CSV(RESULTS)
-csv.clear()
-
 y_time = []
 y_target = []
 y_predict = []
+anomaly = []
 
 # Prepare the timer
 goal_time = time.time()
@@ -251,7 +253,7 @@ while True:
         x_n = X[(row_count) % matrix_length][:num_sensors]
         print "w_opt,\n", w_opt
         actual_prediction = np.inner(w_opt, x_n)
-	prediction = max(0, actual_prediction)
+        prediction = max(0, actual_prediction)
         target = X[(row_count) % matrix_length][num_sensors]
 
         #log the new result
@@ -260,27 +262,6 @@ while True:
         # Not currently used but will be necessary to flag user:
         error = (prediction-target)
         sigma = np.sqrt(1/b_opt + np.dot(np.transpose(x_n),np.dot(S_N, x_n)))
-
-	y_target.append(target)
-	y_predict.append(prediction)
-	y_time.append(cur_time)
-
-	# Achieve scrolling effect by only writing most recent data
-        if len(y_time) >= matrix_length:
-
-            y_time = y_time[-matrix_length:]
-            y_target = y_target[-matrix_length:]
-            y_predict = y_predict[-matrix_length:]
-
-            csv.clear()
-            csv.append(y_time, y_target, y_predict)
-        else:
-            csv.append(y_time[-1:], y_target[-1:], y_predict[-1:])
-
-	print "Target:", target, 
-	print "Prediction:", prediction
-        if (actual_prediction < 0):
-	    print "Actual Predict:", actual_prediction
 
         # Catching pathogenic cases where variance (ie, sigma)
         # gets really really small
@@ -293,6 +274,7 @@ while True:
 
         #flag the user if necessary (error is greater than allowance)
         #two-in-a-row counter, much like branch prediction
+        anomaly_found = False
         if np.abs(Sn) <= THRESHOLD:
             alert_counter = 0
         elif np.abs(Sn) > THRESHOLD and alert_counter == 0:
@@ -300,11 +282,34 @@ while True:
             Sn = Sn_1
         elif np.abs(Sn) > THRESHOLD and alert_counter == 1:
             Sn = 0
-            ##COMMENTED OUT ALERT_COUNTER
+            anomaly_found = True
             logging.error("ANOMALY FOUND!")
             if __debug__:
                 print "ERROR: ANOMALY"
 
         Sn_1 = Sn
+
+        if anomaly_found:
+            anomaly.append(1)
+        else:
+            anomaly.append(0)
+        
+        y_target.append(target)
+        y_predict.append(prediction)
+        y_time.append(cur_time)
+
+        # Achieve scrolling effect by only writing most recent data
+        if len(y_time) >= matrix_length:
+            y_time = y_time[-matrix_length:]
+            y_target = y_target[-matrix_length:]
+            y_predict = y_predict[-matrix_length:]
+            anomaly = anomaly[-matrix_length:]
+
+        writeResults(RESULTS, (y_time, y_target, y_predict, anomaly))
+
+        print "Target:", target, 
+        print "Prediction:", prediction
+        if (actual_prediction < 0):
+            print "Actual Predict:", actual_prediction
 
     row_count += 1
