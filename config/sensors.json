@@ -13,6 +13,20 @@
 			}
 		}
 	},
+        "10":
+        {
+                "name": "Motion_10",
+                "data":
+                {
+                        "motion": {
+                                "data_num": "1",
+                                "instance_num": "0",
+                                "command_class": "48",
+                                "url_suffix": ".level.value",
+                                "type": "bool"
+                        }
+                }
+        },
 
         "11":
         {
