@@ -388,14 +388,14 @@ class LoadingWindow(QtGui.QDialog):
         self.setWindowIcon(QtGui.QIcon(icon_file))
 
         layout = QtGui.QVBoxLayout()
-        layout.addWidget(QtGui.QLabel("Graphing now. Please wait...", self))
+        layout.addWidget(QtGui.QLabel("Calculating. Please wait...", self))
         progress = QtGui.QProgressBar(self)
         progress.setMinimum(0)
         progress.setMaximum(0)
         layout.addWidget(progress)
         self.setLayout(layout)
         self.show()
-
+        
 
 ##############################  MAIN  ##############################
 def main():

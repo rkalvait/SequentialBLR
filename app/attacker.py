@@ -40,7 +40,7 @@ def datetime_from_timestamp
 class MyCanvas(FigureCanvas):
 
     # Constructor
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
+    def __init__(self, parent=None, width=5, height=4, dpi=80):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         super(MyCanvas, self).__init__(self.fig)
         
