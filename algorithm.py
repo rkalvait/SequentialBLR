@@ -29,7 +29,7 @@ class Algo(object):
     def __init__(self, granularity, training_window, forecasting_interval, num_features):
 
         # granularity           -> time between measurements
-        # matrix_length         -> number of data points to train on
+        #y_B matrix_length         -> number of data points to train on
         # forecasting_interval  -> number of data points between re-training sessions
         # num_features          -> number of features to train on
         self.granularity = int(granularity)
@@ -58,7 +58,6 @@ class Algo(object):
         self.THRESHOLD = self.L * np.sqrt(self.w/(2-self.w))
         self.Sn_1 = 0
         self.alert_counter = 0
-
         self.init_training = False
         self.using_backup = False
         self.row_count = 0
@@ -129,10 +128,12 @@ class Algo(object):
             self.alert_counter = 0
             anomaly_found = False
         elif np.abs(Sn) > self.THRESHOLD and self.alert_counter == 0:
+            #print "Severity: %.3f" %(np.abs(Sn))
             self.alert_counter = 1
             anomaly_found = False
             Sn = self.Sn_1
         elif np.abs(Sn) > self.THRESHOLD and self.alert_counter == 1:
+            #print "Severity: %.3f" %(np.abs(Sn))
             Sn = 0
             anomaly_found = True
             #print "ERROR: ANOMALY"
@@ -175,6 +176,6 @@ class Algo(object):
         self.w = w
         self.L = L
         self.THRESHOLD = self.L * np.sqrt(self.w/(2-self.w))
-        print "w, L: %.3f, %.3f" % (self.w, self.L)
+        print "w, L, THRES: : %.3f, %.3f %.3f" % (self.w, self.L,self.THRESHOLD)
 
 

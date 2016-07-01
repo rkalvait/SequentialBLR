@@ -61,19 +61,15 @@ def main():
     # The smaller value of alpha, the more averaging takes place
     # A value of 1.0 means no averaging happens
     last_avg = np.zeros(len(columns))
-<<<<<<< HEAD
-    alpha = 1
-=======
     alpha = float(raw_input('Enter Value of alpha:'))
     #alpha = 1
     #alpha = .7
->>>>>>> f0377d23ca80d848d61776ddfbe0fba14be9548e
     print "Alpha: %.3f" % alpha
     
     #algo.setSeverityParameters(w=0.53, L=3.714) # Most sensitive
     #algo.setSeverityParameters(w=0.84, L=3.719) # Medium sensitive
-    #algo.setSeverityParameters(w=1.00, L=3.719) # Least sensitive
-    algo.setSeverityParameters(w=1.00, L=3.9) # Most sensitive
+    algo.setSeverityParameters(w=1, L=3.719) # Least sensitive
+    #algo.setSeverityParameters(w=1.00, L=3.9) # Most sensitive
     
     detected = set()
     ground_truth = set()
@@ -85,11 +81,10 @@ def main():
         # Read new data from file
         cur_time = float(line[0])
         new_data = np.asarray(line[1:], np.float)
-
+        new_data = np.around(new_data,decimals=1)
         #if (count % 240) == 0:
         #    current_time = dt.datetime.fromtimestamp(cur_time)
         #    print "Trying time %s" % current_time.strftime(DATE_FORMAT)
-            
         count += 1
         
         # EWMA calculation
@@ -109,22 +104,17 @@ def main():
                 anomalies.append(1)
             else:
                 anomalies.append(0)
-<<<<<<< HEAD
         '''        
         if(cur_time >= 1339700400 and cur_time <= 1339704000):
-=======
-                
-        if(cur_time >= 1338699600 and cur_time < 1338703200):
->>>>>>> 7caa3dbaddfb7eb88bbb7a16ebb4610d9a19694c
             ground_truth.add(cur_time)
-        if(cur_time >= 1339221600 and cur_time < 1339224300):
+        if(cur_time >= 1340064000 and cur_time < 1340066700):
             ground_truth.add(cur_time)
         '''
 
         if(cur_time >= 1337022000 and cur_time <= 1337025600):
             ground_truth.add(cur_time)
-       # if(cur_time >= 1337385600 and cur_time <= 1337388300):
-        #    ground_truth.add(cur_time)
+        if(cur_time >= 1337385600 and cur_time <= 1337388300):
+            ground_truth.add(cur_time)
  	#'''	
 
     ##############################  GRAPHING/STATS  ##############################
