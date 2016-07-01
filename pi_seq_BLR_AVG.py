@@ -19,16 +19,27 @@ else:
 
 # Checking command-line input
 import sys
-if len(sys.argv) != 4:
-    print """Error: usage: python""", sys.argv[0], """ <granularity>
+import argparse
+
+parser = argparse.ArgumentParser(description='Sequential BLR algorithm')
+parser.add_argument('train_pram', metavar='Training Paramater',type=int, nargs='+',help='Training Paramaters: Granularity, Window Size, Forecasting Interval')
+parser.add_argument('-s','--sound', action='store_true')
+
+arg = parser.parse_args()
+print arg.train_pram
+print arg.sound
+if len(arg.train_pram) != 3:
+    print "Error: usage: python", sys.argv[0], """ <granularity>
             <window size> <forecasting interval>"""
     print "Where granularity is the frequency of data collection, in minutes"
     print "Where window size is the amount of remembered data, in hours"
     print "Where forecasting interval is the time between trainings, in hours"
     exit(1)
-
-
-############################################################
+if arg.sound and __debug__:
+    print "Sound feature will be used"
+train_p = arg.train_pram
+sound_on = arg.sound
+###########################################################
 
 print "Initializing libraries..."
 
@@ -42,7 +53,6 @@ from algoRunFunctions import train, severityMetric
 from get_data import get_data, get_power
 from zwave_api import ZWave
 import pickle 
-
 ############################################################
 
 #if __name__ == "__main__":
@@ -112,11 +122,11 @@ alert_counter = 0
 # granularity           -> Time between sensor measurements
 
 num_sensors = len(ZServer.get_data_keys())#+1 #for noise detection
-matrix_length = int(sys.argv[2])*60/int(sys.argv[1])
-forecasting_interval = int(sys.argv[3])*60/int(sys.argv[1])
-granularity_in_seconds = int(sys.argv[1])*60
+matrix_length = int(train_p[1])*60/int(train_p[0])
+forecasting_interval = int(train_p[2])*60/int(train_p[0])
+granularity_in_seconds = int(train_p[0])*60
 
-logging.info("Starting program with settings: %s %s %s" % (sys.argv[1], sys.argv[2], sys.argv[3]))
+logging.info("Starting program with settings: {} {} {} sound:{}".format(train_p[0], train_p[1], train_p[2],arg.sound))
 
 # X is the matrix containing the training data
 Avg_over = 5
