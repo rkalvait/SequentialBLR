@@ -401,6 +401,7 @@ class MainWindow(QtGui.QMainWindow):
             for attack in self.attackList:
                 if(cur_datetime >= attack.start and cur_datetime < attack.end):
                     ground_truth.add(cur_time)
+                    break
                     
             if (count % 60) == 0:
                 #print "Trying time: ", cur_time

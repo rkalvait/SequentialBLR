@@ -5,6 +5,7 @@ config.txt
 *figures*
 *results*
 *test*
+data/*
 algoRun
 tensorflow
 *.bak
