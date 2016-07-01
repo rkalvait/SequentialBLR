@@ -16,14 +16,12 @@ import csv
 import json
 from urllib import urlopen
 
-from algorithm import Algo, f1_scores
-from grapher import DATE_FORMAT, writeResults, print_stats
 from database import Database
-
+from grapher import DATE_FORMAT
 
 ##############################  PARAMETERS  ##############################
 CONFIG_FILE = 'config.txt'
-outfile = 'results.csv'
+outfilename = 'Fur_May.csv'
 
 ##############################  FUNCTIONS  ##############################
 
@@ -44,13 +42,11 @@ def getStartEndTimes(id_list):
     return start_time, end_time
 
 
-# Return a list of ID numbers, given input
+# Return a list of ID numbers, given input string
+# Interpret 1-3 to include 1,2,3
 def getListIDs(inputIDs):
-
     inputIDs = inputIDs.split(',')
     id_list = []
-    
-    # Interpret 1-3 to include 1,2,3
     for selection in inputIDs:
         if '-' not in selection:
             id_list.append(int(selection))
@@ -58,12 +54,9 @@ def getListIDs(inputIDs):
             bounds = selection.split('-')
             for index in range(int(bounds[0]), int(bounds[1])+1):
                 id_list.append(index)
-
     return id_list
     
     
-
-
 ##############################  MAIN  ##############################
 def main():
 
@@ -71,71 +64,43 @@ def main():
     with open('smartDriver.json') as data_file:
         jsonDataFile = json.load(data_file)
 
-    granularity = int(jsonDataFile['granularity'])
-    training_window = int(jsonDataFile['windowSize'])
-    forecasting_interval = int(jsonDataFile['forecastingInterval'])
-    
-    print ("\nStarting analysis on database with settings %d %d %d..." 
-           % (granularity, training_window, forecasting_interval))
-           
-    granularity_in_seconds = granularity * 60
-           
-    # Initialize database
+    print ("\nRetreiving data from database...")
     database = Database(CONFIG_FILE)
-           
+
+    granularity_in_seconds = int(jsonDataFile['granularity']) * 60
+
     # Get the list of feature numbers
     id_list = getListIDs(jsonDataFile["idSelection"])
-
     id_list = list(set(id_list)) # Remove duplicates
     id_list.sort()
 
-    # Determine the range of times to pull data from    
-    # If the user specified a timeframe, use that
+    # Determine the range of times to pull data from.
+    # If the user specified a timeframe, use that range.
     if(int(jsonDataFile["specifyTime"])):
        start_time = dt.datetime.strptime(jsonDataFile["beginTime"], DATE_FORMAT)
        end_time = dt.datetime.strptime(jsonDataFile["endTime"], DATE_FORMAT)
 
-    # Otherwise, find the largest timeframe for which each feature has data
+    # Otherwise, find the largest timeframe for which each feature has data.
     else:
         start_time, end_time = getStartEndTimes(id_list)
 
     print "Start, end: ", start_time, end_time
         
-    # Get the list of column headers for the features
+    # Get the list of column headers for the features.
     columns = []
     for id in id_list:
-        columns.append(jsonDataFile['data'][id-1]['columnName'])
-        
+        columns.append(jsonDataFile['data'][id-1]['columnName'])        
     columns.append(jsonDataFile['totalConsum'])
-   
-    print "Columns:", len(columns)
+    print "Number of columns:", len(columns)
  
-    # Algorithm settings
-    algo = Algo(granularity, training_window, forecasting_interval, len(columns)-1)
-    
-    y_predict = []
-    y_target = []
-    y_time = []
-    
-    count = 0
-    
-    # EWMA additions
-    # alpha is adjustable on a scale of (0, 1]
-    # The smaller value of alpha, the more averaging takes place
-    # A value of 1.0 means no averaging happens
-    last_avg = np.zeros(len(columns))
-    alpha = 1.0
-    
-    detected = set()
-    ground_truth = set()
-    
-    outfile = 'db1.csv'
-    outfile = open(outfile, 'wb')
+    outfile = open(outfilename, 'wb')
     writer = csv.writer(outfile)
 
     last = np.zeros(len(columns))
-
-    ##############################  ANALYSIS  ##############################
+    
+    count = 0
+    
+    ##############################  DATA COLLECTION  ##############################
     print "Beginning analysis..."
     while start_time < end_time:
 
@@ -155,31 +120,23 @@ def main():
         stop_time = start_time + dt.timedelta(0, granularity_in_seconds)
         new_data = database.get_avg_data(start_time, stop_time, columns)
         
-        new_data = np.asarray([max(0, data) for data in new_data]) # remove 'nan' and negative
-        
+        new_data = np.asarray([max(0, data) for data in new_data])   # Remove 'nan' and negative
+        '''        
         if new_data[2] == 0:
-            new_data[1] = last[1]
+            new_data[3] = last[3]
             new_data[2] = last[2]
         else:
             last = new_data
+        '''
 
         start_time = time.mktime(start_time.timetuple())
         new_data = np.insert(new_data, 0,  start_time)
-        
         writer.writerow(new_data)
 
-        start_time = stop_time #Increment and loop
+        start_time = stop_time  # Increment and loop
 
-
-    ##############################  GRAPHING/STATS  ##############################
-
-    # Save data for later graphing
     outfile.close()
-    
-    f1_scores(detected, ground_truth)
-    print_stats(y_target, y_predict)
-
-    print "Ending analysis. See %s for results." % outfile
+    print "See %s for results." % outfilename
     
     
 # If run as main:

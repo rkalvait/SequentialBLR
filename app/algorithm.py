@@ -8,17 +8,13 @@ import datetime as dt
 import numpy as np
 import pickle
 
-from grapher import DATE_FORMAT
+from param import *
 from algoRunFunctions import train, severityMetric, runnable
 
 
-##### PARAMETERS #####
+#==================== PARAMETERS ====================#
 X_BACKUP_FILENAME = 'X_backup.bak'
 RESULTS_FILENAME = 'results.csv'
-
-
-
-
 
 # This class defines the BLR algorithm and associated data manipulation.
 # It is meant to act in conjunction with other programs which perform data

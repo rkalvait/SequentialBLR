@@ -14,11 +14,10 @@ import datetime as dt
 import numpy as np
 import csv
 
-from algorithm import Algo, f1_scores
-from grapher import DATE_FORMAT, writeResults, print_stats
-
-
-##############################  PARAMETERS  ##############################
+from algorithm import Algo
+from param import DATE_FORMAT
+from results import writeResults
+from algoRunFunctions import f1_scores, print_stats
 
 
 ##############################  MAIN  ##############################
@@ -50,9 +49,10 @@ def main():
     # Algorithm settings
     algo = Algo(granularity, training_window, forecasting_interval, len(columns)-1)
     
-    y_predict = []
-    y_target = []
-    y_time = []
+    y_time = ['Timestamp']
+    y_target = ['Target']
+    y_predict = ['Prediction']
+    anomalies = ['Anomaly']
     
     count = 0
     
@@ -61,8 +61,13 @@ def main():
     # The smaller value of alpha, the more averaging takes place
     # A value of 1.0 means no averaging happens
     last_avg = np.zeros(len(columns))
-    alpha = 1
+    alpha = float(raw_input('Enter Value of alpha:'))
     print "Alpha: %.3f" % alpha
+    
+    #algo.setSeverityParameters(w=0.53, L=3.714) # Most sensitive
+    #algo.setSeverityParameters(w=0.84, L=3.719) # Medium sensitive
+    #algo.setSeverityParameters(w=1.00, L=3.719) # Least sensitive
+    algo.setSeverityParameters(w=1.00, L=3.9) # Most sensitive
     
     detected = set()
     ground_truth = set()
@@ -95,10 +100,15 @@ def main():
             
             if algo.checkSeverity(target, float(prediction)):
                 detected.add(cur_time)
-                
-        if(cur_time >= 1465038505 and cur_time <= 1465042060):
+                anomalies.append(1)
+            else:
+                anomalies.append(0)
+      
+        if(cur_time >= 1338699600 and cur_time < 1338703200):
             ground_truth.add(cur_time)
-         
+        if(cur_time >= 1339221600 and cur_time < 1339224300):
+            ground_truth.add(cur_time)
+
 
     ##############################  GRAPHING/STATS  ##############################
          
@@ -106,10 +116,10 @@ def main():
     infile.close()
         
     # Save data for later graphing
-    writeResults(outfile, y_time, y_target, y_predict)
+    writeResults(outfile, (y_time, y_target, y_predict, anomalies))
     
     f1_scores(detected, ground_truth)
-    print_stats(y_target, y_predict)
+    print_stats(y_target[1:], y_predict[1:]) #Remove header
 
     print "Ending analysis. See %s for results." % sys.argv[2]
     

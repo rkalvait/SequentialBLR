@@ -22,14 +22,17 @@ from matplotlib.backends.backend_qt4agg import (
 from matplotlib.figure import Figure
 from PyQt4 import QtGui, QtCore
 
-'''
-use_pyside = qt_compat.QT_API == qt_compat.QT_API_PYSIDE
-if use_pyside:
-    from PySide import QtGui, QtCore
-else:
-    from PyQt4 import QtGui, QtCore
-'''
+from grapher2 import DATE_FORMAT
 
+
+##############################  HELPER FUNCTIONS  ##############################
+'''
+def timestamp_from_datetime(date):
+    EPOCH = dt.datetime.fromtimestamp(0)
+    (dt.datetime.utcfromtimestamp(now) - dt.datetime.utcfromtimestamp(0)).total_seconds()
+
+def datetime_from_timestamp
+'''
 
 ##############################  QT CLASSES  ##############################
 
@@ -37,42 +40,65 @@ else:
 class MyCanvas(FigureCanvas):
 
     # Constructor
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
+    def __init__(self, parent=None, width=5, height=4, dpi=80):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
-        FigureCanvas.__init__(self, self.fig)
+        super(MyCanvas, self).__init__(self.fig)
+        
         self.setParent(parent)
 
         self.graph = self.fig.add_subplot(111)
-        self.graph.hold(False) # Clear the graph after every call to plot
+        self.clear()
 
-        FigureCanvas.setSizePolicy(self,
-                                   QtGui.QSizePolicy.Expanding,
-                                   QtGui.QSizePolicy.Expanding)
+        self.setSizePolicy(QtGui.QSizePolicy.Expanding,
+                           QtGui.QSizePolicy.Expanding)
 
         FigureCanvas.updateGeometry(self)
-
+        self.fig.tight_layout()
+        self.draw()
 
     # Update the graph using the given data
     # 'times' should be datetime objects
     # 'power' should be in Watts
-    def updateGraph(self, times, power):
+    def graphData(self, times, power):
         power = [i/1000.0 for i in power]
         xmin = min(times)
         xmax = max(times)
         ymin = 0
         ymax = max(power) * 1.1
 
-        self.graph.plot(times, power, 'r')
+        #self.graph.plot(times, power, 'r')
+        self.power_line.set_data(times, power)
         self.graph.set_xlim(xmin, xmax)
         self.graph.set_ylim(ymin, ymax)
-        self.graph.set_ylabel("Power (kW)")
-        self.graph.xaxis.set_major_formatter(DateFormatter("%m-%d %H:%M:%S"))
-        self.graph.xaxis.set_major_locator(LinearLocator(numticks=6))
-        plt.setp(self.graph.get_xticklabels(), rotation=10)
 
         self.fig.tight_layout()
         self.draw()
+        
+    # Add a horizontal color span to the graph
+    # 'start' should be a datetime (preferably in range)
+    # 'duration' should be the width of the span
+    # 'color' should be a string describing an acceptable color value
+    def colorSpan(self, start, duration, color):
+        end = start + dt.timedelta(minutes=duration)
+        self.graph.axvspan(xmin=start, xmax=end, color=color, alpha=0.2)
+        self.draw()
 
+    # Clear current graph, including line and 
+    def clear(self):
+        self.graph.cla()
+        zero = dt.datetime.fromtimestamp(0)
+        one = dt.datetime.fromtimestamp(1)
+        x, y = [zero, one], [-1, -1]
+        self.graph.set_xlim(zero, one)
+        self.graph.set_ylim(0, 1)
+        self.power_line, = self.graph.plot(x, y, color='red')
+        self.graph.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M:%S"))
+        self.graph.xaxis.set_major_locator(LinearLocator(numticks=6))
+        plt.setp(self.graph.get_xticklabels(), rotation=10)
+        self.graph.set_ylabel("Power (kW)")
+        self.fig.tight_layout()
+        self.draw()
+        
 
 # Main application window - creates the widgets and the window
 class MainWindow(QtGui.QMainWindow):
@@ -81,8 +107,8 @@ class MainWindow(QtGui.QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setGeometry(50, 50, 800, 500)
-        self.setWindowTitle('NextHome Energy Analysis')
-        self.setWindowIcon(QtGui.QIcon('merit_icon.ppm'))
+        self.setWindowTitle('Attacker')
+        self.setWindowIcon(QtGui.QIcon('merit_icon.png'))
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
         self.statusBar()
@@ -132,7 +158,7 @@ class MainWindow(QtGui.QMainWindow):
 
         browse_button = QtGui.QPushButton("Browse...")
         browse_button.clicked.connect(self.browseFile)
-        load_button = QtGui.QPushButton("Load")
+        load_button = QtGui.QPushButton("Reset")
         load_button.clicked.connect(self.loadFile)
         save_button = QtGui.QPushButton("Save")
         save_button.clicked.connect(self.saveFile)
@@ -157,15 +183,18 @@ class MainWindow(QtGui.QMainWindow):
     # Search the file system for the desired input file
     def browseFile(self):
         self.old_filename = str(QtGui.QFileDialog.getOpenFileName())
-        self.new_filename = self.old_filename.rstrip('.csv')
-        self.new_filename += '_attacked.csv'
-        self.edit_old.setText(self.old_filename)
-        self.edit_new.setText(self.new_filename)
+        if self.old_filename != '':
+            self.new_filename = self.old_filename.rstrip('.csv')
+            self.new_filename += '_attacked.csv'
+            self.edit_old.setText(self.old_filename)
+            self.edit_new.setText(self.new_filename)
+            self.loadFile()
         
     # Load original data from the file given by old_filename
     # Always grabs the first and last columns in the file
     def loadFile(self):
         if self.checkFilename(self.old_filename):
+            self.canvas.clear()
             try:
                 file = open(self.old_filename, 'rb')
             except:
@@ -188,8 +217,10 @@ class MainWindow(QtGui.QMainWindow):
                 except ValueError:
                     self.times = [dt.datetime.strptime(t, DATE_FORMAT) for t in timestamps]
                     
-                self.canvas.updateGraph(self.times, self.old_power)
+                self.canvas.graphData(self.times, self.old_power)
                 self.new_power = [item for item in self.old_power]
+                self.statusBar().showMessage(
+                    "Graphing complete.", 5000)
                 
     # Save the new data in the file given by new_filename
     def saveFile(self):
@@ -225,29 +256,46 @@ class MainWindow(QtGui.QMainWindow):
     # Open the attack dialog and get the inputs
     # Add the attack and re graph
     def startAttack(self):
-        dialog = AttackDialog(self)
-        if dialog.exec_():
-            startdate, duration, intensity = dialog.get_info()
+        if self.checkFilename(self.old_filename):
+            dialog = AttackDialog(self)
+            if dialog.exec_():
+                startdate, duration, intensity = dialog.get_info()
+            else:
+                return
+            self.addAttack(startdate, duration, intensity)
+            self.canvas.graphData(self.times, self.new_power)
+            self.canvas.colorSpan(startdate, duration, 'red')
+            self.statusBar().showMessage(
+                "Graphing complete.", 5000)
         else:
-            return
-        self.addAttack(startdate, duration, intensity)
-        self.canvas.updateGraph(self.times, self.new_power)
-        
+            pass
+            
     # This is where the magic happens
     # Add an attack to new_power
     def addAttack(self, startdate, duration, intensity):
         enddate = startdate + dt.timedelta(minutes=duration)
+
+        # Verify that the times are usable
+        if (startdate > self.times[-1] or
+                enddate < self.times[0]):
+            error_window = QtGui.QErrorMessage(self)
+            error_window.showMessage("Attack out of range.")
+
+        print time.mktime(startdate.timetuple())
+        print time.mktime(enddate.timetuple())
+        
         for index in xrange(len(self.times)):
             if self.times[index] > enddate:
                 return
             if self.times[index] > startdate:
                 self.new_power[index] += intensity
-
+        
                 
 # Dialog window for adding a new attack
 class AttackDialog(QtGui.QDialog):
     def __init__(self, parent=None):
         super(AttackDialog, self).__init__(parent)
+        self.setWindowTitle('Add Attack')
         layout = QtGui.QVBoxLayout()
         
         form_widget = QtGui.QWidget(self)
@@ -259,9 +307,9 @@ class AttackDialog(QtGui.QDialog):
         
         form_layout.addRow(QtGui.QLabel("Start date: ", form_widget),
                            self.date_input)
-        form_layout.addRow(QtGui.QLabel("Duration: ", form_widget),
+        form_layout.addRow(QtGui.QLabel("Duration (minutes): ", form_widget),
                            self.duration_input)
-        form_layout.addRow(QtGui.QLabel("Intensity: ", form_widget),
+        form_layout.addRow(QtGui.QLabel("Intensity (Watts): ", form_widget),
                            self.intensity_input)
                            
         form_widget.setLayout(form_layout)
