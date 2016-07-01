@@ -9,6 +9,7 @@ import time
 import numpy as np
 import scipy as sp
 import scipy.stats
+import csv
 import json
 from urllib import urlopen
 
@@ -179,3 +180,22 @@ def print_stats(y_target, y_predict, smoothing_win=120):
     print "%20s |%20s |%15s |%10s "  % ("RMSE-score (smoothed)", "RMSE-score (raw)", "Relative MSE", "SMSE")
     print "%20.2f  |%20.2f |%15.2f |%10.2f " % (np.sqrt(PMSE_score_smoothed), np.sqrt(PMSE_score), Re_MSE, SMSE)
     print "---------------------------------------------------------------------------"
+    
+    
+def readResults(csvfile):
+    """Retrieve data in file given by 'csvfile'."""
+    
+    with open(csvfile, 'rb') as infile:
+        reader = csv.reader(infile)
+        reader.next()
+        return zip(*reader)
+
+
+def writeResults(csvfile, results):
+    """Save 'results' data in file given by 'csvfile'."""
+    
+    with open(csvfile, 'wb') as outfile:
+        writer = csv.writer(outfile)
+        row_list = zip(*results) #Get columns out of rows
+        for row in row_list:
+            writer.writerow(row)

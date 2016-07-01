@@ -16,11 +16,10 @@ import csv
 import json
 from urllib import urlopen
 
+from param import *
 from database import Database
-from grapher import DATE_FORMAT
 
 ##############################  PARAMETERS  ##############################
-CONFIG_FILE = 'config.txt'
 outfilename = 'smart_env_Jul.csv'
 
 ##############################  FUNCTIONS  ##############################
@@ -61,11 +60,11 @@ def getListIDs(inputIDs):
 def main():
 
     # Retreive settings from JSON settings file
-    with open('smartDriver.json') as data_file:
-        jsonDataFile = json.load(data_file)
+    with open(SMART_DRIVER) as driver:
+        jsonDataFile = json.load(driver)
 
     print ("\nRetreiving data from database...")
-    database = Database(CONFIG_FILE)
+    database = Database(DB_CONFIG)
 
     granularity_in_seconds = int(jsonDataFile['granularity']) * 60
 
