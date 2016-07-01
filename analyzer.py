@@ -29,9 +29,8 @@ from PyQt4 import QtGui, QtCore
 
 from param import *
 from algo import Algo
-from attacker import MyCanvas as PowerGraph
 from attacker import AttackDialog
-from grapher import LoadingWindow, ResultsGraph
+from grapher import LoadingWindow, ResultsGraph, PowerGraph
 from algoFunctions import f1_scores, print_stats, readResults, writeResults
 
 
@@ -47,7 +46,7 @@ class MainWindow(QtGui.QMainWindow):
         super(MainWindow, self).__init__()
         self.setGeometry(50, 50, 1200, 600)
         self.setWindowTitle('CSV Data Analysis')
-        self.setWindowIcon(QtGui.QIcon(icon_file))
+        self.setWindowIcon(QtGui.QIcon(ICON_FILE))
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
         # Widget creation
@@ -97,38 +96,30 @@ class MainWindow(QtGui.QMainWindow):
     def createFileWidget(self):
         """Create the file browsing section"""
 
-        title = QtGui.QLabel("Choose the input file: ", self)
-        title.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
         mainWidget = QtGui.QWidget(self)
+        title = QtGui.QLabel("Choose the input file: ")
+        title.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
 
-        self.inputEdit = QtGui.QLineEdit(mainWidget)
+        self.inputEdit = QtGui.QLineEdit()
         self.inputEdit.setEnabled(False)
-        self.attackEdit = QtGui.QLineEdit(mainWidget)
-        self.resultsEdit = QtGui.QLineEdit(mainWidget)
+        self.attackEdit = QtGui.QLineEdit()
+        self.resultsEdit = QtGui.QLineEdit()
         
-        formLayout = QtGui.QFormLayout()
-        formLayout.addRow(title)
-        formLayout.addRow("Input file: ", self.inputEdit)
-        formLayout.addRow("Attack file: ", self.attackEdit)
-        formLayout.addRow("Results file: ", self.resultsEdit)
-        formLayout.setVerticalSpacing(8)
-        
-        spacer = QtGui.QLabel("", mainWidget)
-        spacer.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
-        browse = QtGui.QPushButton('Browse...', mainWidget)
+        spacer = QtGui.QLabel("", )
+        browse = QtGui.QPushButton('Browse...', )
         browse.clicked.connect(self.browseFile)
-        save = QtGui.QPushButton('Save', mainWidget)
+        save = QtGui.QPushButton('Save Attacks', )
         save.clicked.connect(self.saveAttackFile)
         
-        buttonLayout = QtGui.QFormLayout()
-        buttonLayout.addWidget(spacer)
-        buttonLayout.addWidget(browse)
-        buttonLayout.addWidget(save)
-
-        mainLayout = QtGui.QHBoxLayout()
-        mainLayout.addLayout(formLayout)
-        mainLayout.addLayout(buttonLayout)
-        mainWidget.setLayout(mainLayout)
+        layout = QtGui.QGridLayout()
+        layout.addWidget(title, 0, 0, 1, -1)
+        layout.addWidget(self.inputEdit, 1, 0)
+        layout.addWidget(self.attackEdit, 2, 0)
+        layout.addWidget(self.resultsEdit, 3, 0)
+        layout.addWidget(browse, 1, 1)
+        layout.addWidget(save, 2, 1)
+        
+        mainWidget.setLayout(layout)
         return mainWidget
 
     def createAttackWidget(self):
@@ -162,22 +153,72 @@ class MainWindow(QtGui.QMainWindow):
         title.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
 
         #TODO: input validation
-        self.emaEdit = QtGui.QLineEdit("1.0", self)
-        self.severityButton1 = QtGui.QRadioButton("w=0.53, L=3.714", mainWidget)
+        self.emaEdit = QtGui.QDoubleSpinBox(mainWidget)
+        self.emaEdit.setDecimals(3)
+        self.emaEdit.setRange(0.001, 1)
+        self.emaEdit.setSingleStep(0.01)
+        self.emaEdit.setValue(1.0)
+
+        self.severityButton1 = QtGui.QRadioButton("w=1.00, L=3.719", mainWidget)     
         self.severityButton2 = QtGui.QRadioButton("w=0.84, L=3.719", mainWidget)
-        self.severityButton3 = QtGui.QRadioButton("w=1.00, L=3.719", mainWidget)     
-        self.severityButton3.toggle()
-        severityLayout = QtGui.QVBoxLayout()
-        severityLayout.addWidget(self.severityButton3)
-        severityLayout.addWidget(self.severityButton2)
-        severityLayout.addWidget(self.severityButton1)
+        self.severityButton3 = QtGui.QRadioButton("w=0.53, L=3.714", mainWidget)
+        self.severityButtonOther = QtGui.QRadioButton("Other", mainWidget)
+        buttonLayout = QtGui.QVBoxLayout()
+        buttonLayout.addWidget(self.severityButton1)
+        buttonLayout.addWidget(self.severityButton2)
+        buttonLayout.addWidget(self.severityButton3)
+        buttonLayout.addWidget(self.severityButtonOther)
+        buttonBox = QtGui.QWidget()
+        buttonBox.setLayout(buttonLayout)
+        
+        self.severitySpinW = QtGui.QDoubleSpinBox(mainWidget)
+        self.severitySpinL = QtGui.QDoubleSpinBox(mainWidget)
+        self.severitySpinW.setDecimals(3)
+        self.severitySpinL.setDecimals(3)
+        self.severitySpinW.setRange(0, 1)
+        self.severitySpinL.setRange(0, 10)
+        self.severitySpinW.setSingleStep(0.01)
+        self.severitySpinL.setSingleStep(0.01)
+        self.severitySpinW.setEnabled(False)
+        self.severitySpinL.setEnabled(False)
+        
+        def toggleSpinBoxes():
+            if self.severityButtonOther.isChecked():
+                self.severitySpinW.setEnabled(True)
+                self.severitySpinL.setEnabled(True)
+            else:
+                self.severitySpinW.setEnabled(False)
+                self.severitySpinL.setEnabled(False)
+                if self.severityButton1.isChecked():
+                    self.severitySpinW.setValue(1)
+                    self.severitySpinL.setValue(3.719)
+                elif self.severityButton2.isChecked():
+                    self.severitySpinW.setValue(.84)
+                    self.severitySpinL.setValue(3.719)
+                elif self.severityButton3.isChecked():
+                    self.severitySpinW.setValue(.53)
+                    self.severitySpinL.setValue(3.714)
+
+        self.severityButton1.toggled.connect(toggleSpinBoxes)
+        self.severityButton2.toggled.connect(toggleSpinBoxes)
+        self.severityButton3.toggled.connect(toggleSpinBoxes)
+        self.severityButtonOther.toggled.connect(toggleSpinBoxes)
+        self.severityButton1.toggle() #Default
+        
+        spinLayout = QtGui.QVBoxLayout()
+        spinLayout.addWidget(QtGui.QLabel("w:    "))
+        spinLayout.addWidget(self.severitySpinW)
+        spinLayout.addWidget(QtGui.QLabel("L:    "))
+        spinLayout.addWidget(self.severitySpinL)
+        
         startButton = QtGui.QPushButton("Start Analysis", mainWidget)
         startButton.clicked.connect(self.startAnalysis)
 
         layout = QtGui.QFormLayout()
         layout.addRow(title)
-        layout.addRow("EMA level (value in range (0, 1]): ", self.emaEdit)
-        layout.addRow("Severity sensitivity parameters: ", severityLayout)
+        layout.addRow("EMA level (aka alpha): ", self.emaEdit)
+        layout.addRow(QtGui.QLabel("Severity sensitivity parameters: "))
+        layout.addRow(buttonBox, spinLayout)
         layout.addRow(startButton)
         mainWidget.setLayout(layout)
         return mainWidget
@@ -266,7 +307,7 @@ class MainWindow(QtGui.QMainWindow):
         self.attackLayout.addWidget(newAttack)
 
         self.powerGraph.graphData(self.time, self.newTarget)
-        self.powerGraph.colorSpan(startdate, duration, 'red')
+        self.powerGraph.colorSpan(startdate, duration, 'green')
         self.statusBar().showMessage("Graphing complete.", 5000)
         self.algoWidget.setEnabled(False)
         #print time.mktime(startdate.timetuple())
@@ -281,6 +322,7 @@ class MainWindow(QtGui.QMainWindow):
         self.newTarget = self.target[:]
         self.powerGraph.clear()
         self.powerGraph.graphData(self.time, self.newTarget)
+        self.algoWidget.setEnabled(True)
 
     def saveAttackFile(self):
         """Save the new data in the file given by attackFile."""
@@ -323,8 +365,6 @@ class MainWindow(QtGui.QMainWindow):
             self.warningDialog("EMA Level must be in range (0, 1].")
             return
         
-        print "alpha: ", alpha
-
         # TODO: Use attackEdit instead of inputEdit
         if len(self.attackList) > 0: 
             infile = str(self.attackEdit.text())
@@ -345,17 +385,13 @@ class MainWindow(QtGui.QMainWindow):
         
         print "The following features were found:", columns
 
+        print "alpha: ", alpha
+        
         # Algorithm settings
         algo = Algo(granularity, trainingWin, forecastingInterval, len(columns)-1)
-        if self.severityButton1.isChecked():
-            algo.setSeverityParameters(w = 0.53, L = 3.714)
-        elif self.severityButton2.isChecked():
-            algo.setSeverityParameters(w = 0.84, L = 3.719)
-        elif self.severityButton3.isChecked():
-            algo.setSeverityParameters(w = 1.00, L = 3.719)
-        else:
-            sys.exit(1) # impossible
-
+        algo.setSeverityParameters(w = self.severitySpinW.value(),
+                                   L = self.severitySpinL.value())
+            
         y_time = ['Timestamp']
         y_target = ['Target']
         y_predict = ['Prediction']
@@ -377,7 +413,9 @@ class MainWindow(QtGui.QMainWindow):
             new_data = np.asarray(line[1:], np.float)
 
             # EWMA calculation
-            if first: last_avg = new_data
+            if first: 
+                last_avg = new_data
+                first = False
             avg_data = last_avg + alpha * (new_data - last_avg)
             last_avg = avg_data
 

@@ -176,6 +176,6 @@ class Algo(object):
         self.w = w
         self.L = L
         self.THRESHOLD = self.L * np.sqrt(self.w/(2-self.w))
-        print "w, L, THRES: : %.3f, %.3f %.3f" % (self.w, self.L,self.THRESHOLD)
+        print "w = %.3f, L = %.3f, THRESHOLD = %.3f" % (self.w, self.L,self.THRESHOLD)
 
 

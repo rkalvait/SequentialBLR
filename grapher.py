@@ -136,7 +136,71 @@ class ResultsGraph(FigureCanvas):
         self.fig.tight_layout()
         self.draw()
 
+        
+# Figure class used for graphing
+class PowerGraph(FigureCanvas):
 
+    # Constructor
+    def __init__(self, parent=None, width=5, height=4, dpi=80):
+        self.fig = Figure(figsize=(width, height), dpi=dpi)
+        super(PowerGraph, self).__init__(self.fig)
+        
+        self.setParent(parent)
+
+        self.graph = self.fig.add_subplot(111)
+        self.clear()
+
+        self.setSizePolicy(QtGui.QSizePolicy.Expanding,
+                           QtGui.QSizePolicy.Expanding)
+
+        FigureCanvas.updateGeometry(self)
+        self.fig.tight_layout()
+        self.draw()
+
+    # Update the graph using the given data
+    # 'times' should be datetime objects
+    # 'power' should be in Watts
+    def graphData(self, times, power):
+        power = [i/1000.0 for i in power]
+        xmin = min(times)
+        xmax = max(times)
+        ymin = 0
+        ymax = max(power) * 1.1
+
+        #self.graph.plot(times, power, 'r')
+        self.power_line.set_data(times, power)
+        self.graph.set_xlim(xmin, xmax)
+        self.graph.set_ylim(ymin, ymax)
+
+        self.fig.tight_layout()
+        self.draw()
+        
+    # Add a horizontal color span to the graph
+    # 'start' should be a datetime (preferably in range)
+    # 'duration' should be the width of the span
+    # 'color' should be a string describing an acceptable color value
+    def colorSpan(self, start, duration, color):
+        end = start + dt.timedelta(minutes=duration)
+        self.graph.axvspan(xmin=start, xmax=end, color=color, alpha=0.2)
+        self.draw()
+
+    # Clear current graph, including line and 
+    def clear(self):
+        self.graph.cla()
+        zero = dt.datetime.fromtimestamp(0)
+        one = dt.datetime.fromtimestamp(1)
+        x, y = [zero, one], [-1, -1]
+        self.graph.set_xlim(zero, one)
+        self.graph.set_ylim(0, 1)
+        self.power_line, = self.graph.plot(x, y, color='red')
+        self.graph.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M:%S"))
+        self.graph.xaxis.set_major_locator(LinearLocator(numticks=6))
+        plt.setp(self.graph.get_xticklabels(), rotation=10)
+        self.graph.set_ylabel("Power (kW)")
+        self.fig.tight_layout()
+        self.draw()
+        
+        
 # Main application window - creates the widgets and the window
 class ResultsWindow(QtGui.QMainWindow):
 
