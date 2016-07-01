@@ -141,12 +141,17 @@ class MainWindow(QtGui.QMainWindow):
         mainWidget = QtGui.QWidget(self)
         title = QtGui.QLabel("Inject Attacks: ", mainWidget)
         title.setFont(QtGui.QFont("Arial", 10, QtGui.QFont.Bold))
-        self.attackButton = QtGui.QPushButton("Add Attack...", mainWidget)
-        self.attackButton.clicked.connect(self.addAttack)
-
+        attackButton = QtGui.QPushButton("Add Attack...", mainWidget)
+        attackButton.clicked.connect(self.addAttack)
+        clearButton = QtGui.QPushButton("Clear All", mainWidget)
+        clearButton.clicked.connect(self.clearAttacks)
+        buttonLayout = QtGui.QHBoxLayout()
+        buttonLayout.addWidget(attackButton)
+        buttonLayout.addWidget(clearButton)
+        
         self.attackLayout = QtGui.QVBoxLayout()
         self.attackLayout.addWidget(title)
-        self.attackLayout.addWidget(self.attackButton)
+        self.attackLayout.addLayout(buttonLayout)
         mainWidget.setLayout(self.attackLayout)
         return mainWidget
 
@@ -172,7 +177,7 @@ class MainWindow(QtGui.QMainWindow):
 
         layout = QtGui.QFormLayout()
         layout.addRow(title)
-        layout.addRow("EMA level (value in range (0, 1]: ", self.emaEdit)
+        layout.addRow("EMA level (value in range (0, 1]): ", self.emaEdit)
         layout.addRow("Severity sensitivity parameters: ", severityLayout)
         layout.addRow(startButton)
         mainWidget.setLayout(layout)
@@ -234,7 +239,6 @@ class MainWindow(QtGui.QMainWindow):
         dialog = AttackDialog(self)
         if dialog.exec_():
             startdate, duration, intensity = dialog.get_info()
-            print startdate, duration, intensity
         else:
             return
 
@@ -243,16 +247,12 @@ class MainWindow(QtGui.QMainWindow):
             self.warningDialog("Attack out of range.")
             return
         
-        print startdate, duration, intensity
-
         # TODO: Catch potential StopIteration errors
         start_id = next(id for id, val in enumerate(self.time) if val > startdate)
         end_id = next(id for id, val in enumerate(self.time) if val > enddate)
         while start_id < end_id:
             self.newTarget[start_id] += intensity
             start_id += 1
-
-        print startdate, duration, intensity
             
         class Attack(QtGui.QLabel):
             def __init__(self, parent, start, duration, intensity):
@@ -266,21 +266,29 @@ class MainWindow(QtGui.QMainWindow):
         self.attackList.append(newAttack)
         self.attackLayout.addWidget(newAttack)
 
-        print startdate, duration, intensity
-
         self.powerGraph.graphData(self.time, self.newTarget)
         self.powerGraph.colorSpan(startdate, duration, 'red')
         self.statusBar().showMessage("Graphing complete.", 5000)
-        print time.mktime(startdate.timetuple())
-        print time.mktime(enddate.timetuple())
         self.algoWidget.setEnabled(False)
+        #print time.mktime(startdate.timetuple())
+        #print time.mktime(enddate.timetuple())
+        
+    def clearAttacks(self):
+        """Open the attack dialog and get the attack parameters."""
+        
+        for attack in self.attackList:
+            attack.deleteLater()
+        self.attackList = []
+        self.newTarget = self.target[:]
+        self.powerGraph.clear()
+        self.powerGraph.graphData(self.time, self.newTarget)
 
-    # Save the new data in the file given by new_filename
     def saveAttackFile(self):
+        """Save the new data in the file given by attackFile."""
+
         inputFile = str(self.inputEdit.text())
         attackFile = str(self.attackEdit.text())
         self.checkInputFilename(attackFile)
-        print 1
         with open(inputFile, 'rb') as infile, open(attackFile, 'wb') as outfile:
             reader = csv.reader(infile)
             writer = csv.writer(outfile)
@@ -291,7 +299,6 @@ class MainWindow(QtGui.QMainWindow):
                 writer.writerow(line)
                 count += 1
         self.statusBar().showMessage("File %s saved" % attackFile, 5000)
-        print "file saved"
         self.algoWidget.setEnabled(True)
                 
     def warningDialog(self, message="Unknown error occurred."):
@@ -343,13 +350,10 @@ class MainWindow(QtGui.QMainWindow):
         algo = Algo(granularity, trainingWin, forecastingInterval, len(columns)-1)
         if self.severityButton1.isChecked():
             algo.setSeverityParameters(w = 0.53, L = 3.714)
-            print "button 1: 0.53, 3.714"
         elif self.severityButton2.isChecked():
             algo.setSeverityParameters(w = 0.84, L = 3.719)
-            print "button 2: 0.84, 3.719"
         elif self.severityButton3.isChecked():
             algo.setSeverityParameters(w = 1.00, L = 3.719)
-            print "button 3: 1.00, 3.719"
         else:
             sys.exit(1) # impossible
 
@@ -396,7 +400,6 @@ class MainWindow(QtGui.QMainWindow):
             cur_datetime = dt.datetime.fromtimestamp(cur_time)
             for attack in self.attackList:
                 if(cur_datetime >= attack.start and cur_datetime < attack.end):
-                    print "Ground truth at", cur_datetime
                     ground_truth.add(cur_time)
                     
             if (count % 60) == 0:
