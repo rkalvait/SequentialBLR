@@ -1,42 +1,43 @@
 #SequentialBLR
+##Overview
+This repository hosts files for running the sequential BLR algorithm on the raspberry pi. 
 
-This repository hosts files for running the sequential BLR algorithm on 
-the raspberry pi. 
+##Installation, Configuration and Usage
+###Installation
+There are a number of required packages that must be installed for proper use, including numpy, scipy, and others. To install these packages, simply run the following command:
+`make install_all`
 
 ###Configuration 
-In order to run succesfully, the following files must
-be configured properly:
+The following files must be modified with the type of sensors being used:
 
 * config/config.json
 * config/sensors.json
 
-Samples and examples of these configuration files can be found in the 
-config directory.
+These files contain information on the location of the z-way server and power database on the network. Samples are provided in the config folder. 
 
-#####IMPORTANT
-The device\_name of each device in sensors.json must be _unique_
+#####IMPORTANT: The device\_name of each device in sensors.json must be _unique_
 
-###Execution
-Once the configuration files have been setup, the program can be run 
-with verbosity using the following commands:
+###Usage
+Once the configuration files have been setup, the program can be run with verbosity using the following commands:
 
-`python pi_seq_BLR.py`
+`python pi_seq_BLR_AVG.py`
 
 or 
+
+`./pi_seq_BLR_AVG.py`
 
 by editing the shebang command on line 1 of the pi\_seq\_BLR.py file
 and changing `#!/usr/bin/python -O` to `#!/usr/bin/python`
 
-_note the -O here means NO DEBUG_
+_note that -O here indicates NO DEBUG_
 
-The program can be run in silent mode (only logging) using the following
-command:
+The program can be run in silent mode (only logging) using the following command:
 
-`python -O pi_seq_BLR.py` 
+`python -O pi_seq_BLR_AVG.py` 
 
 or 
 
-`./pi_seq_BLR.py`
+`./pi_seq_BLR_AVG.py`
 
 
 ###TODO
