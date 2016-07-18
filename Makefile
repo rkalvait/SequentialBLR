@@ -3,6 +3,7 @@ algoRun:
 
 install_all:
 	sudo apt-get update
+    sudo apt-get install python-qt4
 	sudo apt-get install iptables-persistent
 	sudo apt-get install libblas-dev
 	sudo apt-get install liblapack-dev
