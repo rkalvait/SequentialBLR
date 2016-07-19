@@ -15,7 +15,7 @@ The following files must be modified with the type of sensors being used:
 
 These files contain information on the location of the z-way server and power database on the network. Samples are provided in the config folder. 
 
-#####IMPORTANT: The device\_name of each device in sensors.json must be _unique_
+#####IMPORTANT: The device\_name of each device in sensors.json must be _unique_. If you have a mulitsensor such as the Fibaro you can list each individual sensor device as 'device_number.1 or device_number.2' and so on. 
 
 ###Usage
 Once the configuration files have been setup, the program can be run with verbosity using the following commands:
