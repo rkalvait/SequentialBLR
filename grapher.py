@@ -6,14 +6,20 @@
 
 """Updated version of grapher using PyQt4.
 
-This program graphs files with the following format:
+This program graphs CSV files with the following format:
+
+Timestamp,Target,Prediction,Anomaly
+<timestamp>, <target>, <prediction>, <anomaly>
+
+ex)
 
 Timestamp,Target,Prediction,Anomaly
 1464763755,9530,9683,0
+1464763815,8635,9150,1
 
-- Timestamp is an integer representing a UTC timestamp
-- Target and Prediction are power values in Watts
-- Anomaly is a binary value (1 or 0) indicating whether or not
+- <timestamp> is an integer representing a UTC timestamp
+- <target> and <prediction> are power values in Watts
+- <anomaly> is a boolean value (1 or 0) indicating whether or not
     this target-prediction pair is an anomaly or not.
 """
 
@@ -25,6 +31,7 @@ import csv
 import time
 import datetime as dt
 import numpy as np
+from collections import OrderedDict
 
 from PyQt4 import QtGui, QtCore
 #from matplotlib.backends import qt_compat
@@ -41,10 +48,11 @@ from algoFunctions import movingAverage
 
 
 #==================== HELPER CLASSES ====================#
-class Settings(dict):
+class Settings(OrderedDict):
     """Class wrappper for reading and writing to settings file."""
 
     def __init__(self, settingsfile):
+        super(Settings, self).__init__()
         """Initialize the dictionary and read in the settings from the settings file."""
         self.settingsfile = settingsfile
         self.read()
@@ -95,7 +103,7 @@ class ResultsGraph(FigureCanvas):
         self.graph_power.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M:%S"))
         self.graph_error.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M:%S"))
         self.graph_power.xaxis.set_major_locator(LinearLocator(numticks=5))
-        self.graph_error.xaxis.set_major_locator(LinearLocator(numticks=7))
+        self.graph_error.xaxis.set_major_locator(LinearLocator(numticks=5))
 
         # Rotate dates slightly
         plt.setp(self.graph_power.get_xticklabels(), rotation=10)
@@ -200,7 +208,6 @@ class ResultsWindow(QtGui.QMainWindow):
         self.show()
 
         # Load the data and graph it
-        self.loadfilecount = 0
         self.initTimer()
 
     #==================== WIDGET FUNCTIONS ====================#
@@ -298,8 +305,6 @@ class ResultsWindow(QtGui.QMainWindow):
     def loadFile(self, filename):
         """Load in the data from the results file."""
         
-        self.loadfilecount += 1
-
         try:
             file = open(filename, 'rb')
         except IOError as error:
@@ -354,12 +359,12 @@ class ResultsWindow(QtGui.QMainWindow):
         self.edit_button.setText("Change Settings")
         self.edit_button.clicked.disconnect()
         self.edit_button.clicked.connect(self.changeSettings)
-        self.settings['update'] = self.update_edit.value()
-        self.settings['past'] = self.past_edit.value()
-        self.settings['anomaly'] = self.anomaly_edit.value()
-        self.settings['smooth'] = self.smooth_edit.value()
-        self.settings['anomaly_check'] = self.anomaly_box.isChecked()
-        self.settings['smooth_check'] = self.smooth_box.isChecked()
+        self.settings['update'] = str(self.update_edit.value())
+        self.settings['past'] = str(self.past_edit.value())
+        self.settings['anomaly'] = str(self.anomaly_edit.value())
+        self.settings['smooth'] = str(self.smooth_edit.value())
+        self.settings['anomaly_check'] = str(self.anomaly_box.isChecked())
+        self.settings['smooth_check'] = str(self.smooth_box.isChecked())
         self.settings.save()
         self.settings_widget.setDisabled(True)
         self.updateGraph()
@@ -402,15 +407,16 @@ class ResultsWindow(QtGui.QMainWindow):
         predictions = predictions[-time_window:]
         
         # Step 2: Smoothing
-        if self.smooth_box.isChecked():
-            smoothing_window = min(self.smooth_edit.value(), len(self.times))
+        if self.settings['smooth_check'] == 'True':
+            smoothing_window = int(self.settings['smooth'])
+            smoothing_window = min(smoothing_window, len(self.times))
             targets = movingAverage(targets, smoothing_window)
             predictions = movingAverage(predictions, smoothing_window)
 
         self.canvas.graphData(times, targets, predictions)
         
         # Step 3: Anomalies
-        if self.anomaly_box.isChecked():
+        if self.settings['anomaly_check'] == 'True':
             self.showAnomalies()
         else:
             self.canvas.clearSpans()
@@ -422,7 +428,7 @@ class ResultsWindow(QtGui.QMainWindow):
         self.canvas.clearSpans() #Clear any existing spans
 
         start = 0
-        dur = self.anomaly_edit.value()
+        dur = int(self.settings['anomaly'])
         level1 = 0
         level2 = dur / 3.0
         level3 = level2 * 2
