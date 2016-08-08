@@ -117,12 +117,7 @@ class ResultsGraph(FigureCanvas):
         self.draw()
 
     def graphData(self, times, target, predict):
-        """ Update the graph using the given data
-        'times' should be datetime objects
-        'target' should be float values in Watts
-        'predict' should be float values in Watts
-        """
-
+        """ Update the graph using the given data."""
         assert(len(times) == len(target))
         assert(len(times) == len(predict))
 
@@ -150,19 +145,8 @@ class ResultsGraph(FigureCanvas):
         self.fig.tight_layout()
         self.draw()
 
-    def colorSpan(self, start, duration, color):
-        """Add a vertical color span to the target-prediction graph
-        'start' should be a datetime (preferably in range)
-        'duration' should be the width of the span in minutes
-        'color' should be a string describing an _acceptable_ color value"""
-        end = start + dt.timedelta(minutes=duration)
-        span = self.graph_power.axvspan(xmin=start, xmax=end, color=color, alpha=0.15)
-        self.fig.tight_layout()
-        self.draw()
-
     def colorSpans(self, spans):
-        """Add a series of vertical color spans to the graph.
-        'spans' should be a list of tuples of the form: (start, duration, color)"""
+        """Add a series of vertical color spans to the graph."""
         for span in spans:
             start = span[0]
             end = start + dt.timedelta(minutes=span[1])
@@ -182,10 +166,10 @@ class ResultsGraph(FigureCanvas):
 
 class ResultsWindow(QtGui.QMainWindow):
 
-    """Main application window, creates the main window and all widgets."""
+    """Main application window of the Results Grapher program."""
 
-    # Constructor
     def __init__(self):
+        """Create all widgets and sub-widgets."""
         super(ResultsWindow, self).__init__()
         self.setGeometry(50, 50, 1200, 800)
         self.setWindowTitle('Results Grapher')
@@ -215,8 +199,8 @@ class ResultsWindow(QtGui.QMainWindow):
     # Each function creates a new widget instance, adds all necessary layouts
     # and sub-widgets, and then returns its widget to the widget above.
 
-    # Create an instance of the ResultsGraph widget
     def graphWidget(self):
+        """Create an instance of the ResultsGraph widget."""
         main_widget = QtGui.QWidget(self)
         layout = QtGui.QVBoxLayout()
         self.canvas = ResultsGraph(main_widget, width=5, height=4, dpi=80)
@@ -227,8 +211,8 @@ class ResultsWindow(QtGui.QMainWindow):
         main_widget.setLayout(layout)
         return main_widget
 
-    # Creates the options panel to toggle smoothing and anomalies
     def optionsWidget(self):
+        """Creates the options panel to change settings."""
         main_widget = QtGui.QWidget(self)
         layout = QtGui.QFormLayout()
 
@@ -262,11 +246,11 @@ class ResultsWindow(QtGui.QMainWindow):
         self.timeout = 0
         
         self.loadSettings()
-        
         main_widget.setLayout(layout)
         return main_widget
 
     def settingsWidget(self):
+        """Creates the settings inside the options panel."""
         main_widget = QtGui.QWidget(self)
         layout = QtGui.QFormLayout()
 
@@ -310,41 +294,41 @@ class ResultsWindow(QtGui.QMainWindow):
         except IOError as error:
             print repr(error)
             sys.exit(1)
+
+        reader = csv.reader(file)
+        headers = reader.next()
+        columns = zip(*reader)
+        file.close()
+
+        # Convert times from string or timestamp to datetime
+        try:
+            self.times = [
+                dt.datetime.fromtimestamp(float(t)) for t in columns[0]]
+        except ValueError:
+            self.times = [
+                dt.datetime.strptime(t, DATE_FORMAT) for t in columns[0]]
+        
+        self.targets = [float(t) for t in columns[1]]
+        self.predictions = [float(t) for t in columns[2]]
+        if len(columns) >= 4:
+            self.anomalies = [float(t) for t in columns[3]]
         else:
-            reader = csv.reader(file)
-            headers = reader.next()
-            columns = zip(*reader)
-            file.close()
+            self.anomalies = []
+            self.anomaly_box.setChecked(False)
+            self.anomaly_box.setDisabled(True)
+            self.anomaly_edit.setDisabled(True)
+            self.anomaly_box.setText("Show anomalies (unavailable)")
 
-            # Convert times from string or timestamp to datetime
-            try:
-                self.times = [
-                    dt.datetime.fromtimestamp(float(t)) for t in columns[0]]
-            except ValueError:
-                self.times = [
-                    dt.datetime.strptime(t, DATE_FORMAT) for t in columns[0]]
-            
-            self.targets = [float(t) for t in columns[1]]
-            self.predictions = [float(t) for t in columns[2]]
-            if len(columns) >= 4:
-                self.anomalies = [float(t) for t in columns[3]]
-            else:
-                self.anomalies = []
-                self.anomaly_box.setChecked(False)
-                self.anomaly_box.setDisabled(True)
-                self.anomaly_edit.setDisabled(True)
-                self.anomaly_box.setText("Show anomalies (unavailable)")
-
-                
-            self.updateGraph()
+        self.updateGraph()
 
     def loadSettings(self):
+        """Read settings from the settings file and set defaults accordingly."""
         self.settings = Settings(SETTINGS_FILE)
         self.update_edit.setValue(int(self.settings['update']))
         self.past_edit.setValue(int(self.settings['past']))
         self.smooth_box.setChecked(self.settings['smooth_check'] == 'True')
-        self.smooth_edit.setValue(int(self.settings['smooth']))
         self.anomaly_box.setChecked(self.settings['anomaly_check'] == 'True')
+        self.smooth_edit.setValue(int(self.settings['smooth']))
         self.anomaly_edit.setValue(int(self.settings['anomaly']))
             
     def changeSettings(self):
@@ -369,8 +353,8 @@ class ResultsWindow(QtGui.QMainWindow):
         self.settings_widget.setDisabled(True)
         self.updateGraph()
 
-    # Reset the settings to default and draw the original graph
     def resetSettings(self):
+        """Reset the settings to default and draw the original graph."""
         self.update_edit.setValue(5)
         self.past_edit.setValue(24)
         self.smooth_edit.setValue(1)
@@ -395,7 +379,6 @@ class ResultsWindow(QtGui.QMainWindow):
 
     def updateGraph(self):
         """Graph the pre-loaded data and add any desired features."""
-        
         times = self.times
         targets = self.targets
         predictions = self.predictions
@@ -423,10 +406,8 @@ class ResultsWindow(QtGui.QMainWindow):
 
     def showAnomalies(self):
         """Draw colored bars to show regions where anomalies happened."""
-        #loading_window = LoadingWindow()
         self.options_widget.setDisabled(True)
         self.canvas.clearSpans() #Clear any existing spans
-
         start = 0
         dur = int(self.settings['anomaly'])
         level1 = 0
@@ -449,15 +430,15 @@ class ResultsWindow(QtGui.QMainWindow):
 
         self.canvas.colorSpans(spans)
         self.options_widget.setEnabled(True)
-        #loading_window.close()
 
     def initTimer(self):
+        """Start the one-second timer which keeps track of the update timer."""
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.updateTimer)
         self.timer.start(1000)
         
     def updateTimer(self):
-        """Start the timer which periodically updates the graph."""
+        """Decrement the counter and update if necessary the graph."""
         if not self.paused:
             if self.timeout == 0:
                 self.loadFile(RESULTS_FILE)
