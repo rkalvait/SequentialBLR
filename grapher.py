@@ -94,7 +94,7 @@ class ResultsGraph(FigureCanvas):
         self.graph_error.set_ylabel("Error (kW)")
         self.graph_power.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M:%S"))
         self.graph_error.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d %H:%M:%S"))
-        self.graph_power.xaxis.set_major_locator(LinearLocator(numticks=7))
+        self.graph_power.xaxis.set_major_locator(LinearLocator(numticks=5))
         self.graph_error.xaxis.set_major_locator(LinearLocator(numticks=7))
 
         # Rotate dates slightly
@@ -146,11 +146,9 @@ class ResultsGraph(FigureCanvas):
         """Add a vertical color span to the target-prediction graph
         'start' should be a datetime (preferably in range)
         'duration' should be the width of the span in minutes
-        'color' should be a string describing an _acceptable_ color value
-        """
-
+        'color' should be a string describing an _acceptable_ color value"""
         end = start + dt.timedelta(minutes=duration)
-        span = self.graph_power.axvspan(xmin=start, xmax=end, color=color, alpha=0.2)
+        span = self.graph_power.axvspan(xmin=start, xmax=end, color=color, alpha=0.15)
         self.fig.tight_layout()
         self.draw()
 
@@ -160,7 +158,7 @@ class ResultsGraph(FigureCanvas):
         for span in spans:
             start = span[0]
             end = start + dt.timedelta(minutes=span[1])
-            span = self.graph_power.axvspan(xmin=start, xmax=end, color=span[2], alpha=0.2)
+            span = self.graph_power.axvspan(xmin=start, xmax=end, color=span[2], alpha=0.15)
             self.color_spans.append(span)
         self.fig.tight_layout()
         self.draw()
@@ -176,7 +174,7 @@ class ResultsGraph(FigureCanvas):
 
 class ResultsWindow(QtGui.QMainWindow):
 
-    """Main application window, creates the widgets and the window"""
+    """Main application window, creates the main window and all widgets."""
 
     # Constructor
     def __init__(self):
@@ -202,7 +200,8 @@ class ResultsWindow(QtGui.QMainWindow):
         self.show()
 
         # Load the data and graph it
-        self.loadFile(RESULTS_FILE)
+        self.loadfilecount = 0
+        self.initTimer()
 
     #==================== WIDGET FUNCTIONS ====================#
     # These functions create all the widgets, sub-widgets, etc. of the program.
@@ -238,13 +237,22 @@ class ResultsWindow(QtGui.QMainWindow):
         self.edit_button.clicked.connect(self.editOptions)
         layout.addRow(self.edit_button)
 
-        reset_button = QtGui.QPushButton("Reset to Default", main_widget)
-        reset_button.clicked.connect(self.resetOptions)
-        layout.addRow(reset_button)
+        self.reset_button = QtGui.QPushButton("Reset to Default", main_widget)
+        self.reset_button.clicked.connect(self.resetOptions)
+        layout.addRow(self.reset_button)
 
-        update_button = QtGui.QPushButton("Load New Data", main_widget)
-        update_button.clicked.connect(lambda: self.loadFile(RESULTS_FILE))
-        layout.addRow(update_button)
+        self.pause_button = QtGui.QPushButton("Pause", main_widget)
+        self.pause_button.clicked.connect(self.pauseTimer)
+        self.paused = False
+        layout.addRow(self.pause_button)
+        
+        self.update_button = QtGui.QPushButton("Update Now", main_widget)
+        self.update_button.clicked.connect(lambda: self.loadFile(RESULTS_FILE))
+        layout.addRow(self.update_button)
+        
+        self.update_countdown = QtGui.QLabel("Time until next update: %d seconds" % 0)
+        layout.addRow(self.update_countdown)
+        self.timeout = 0
 
         main_widget.setLayout(layout)
         return main_widget
@@ -254,32 +262,32 @@ class ResultsWindow(QtGui.QMainWindow):
         layout = QtGui.QFormLayout()
         self.settings = Settings(SETTINGS_FILE)
 
-        update_label = QtGui.QLabel("Update rate (minutes):   ")
+        update_label = QtGui.QLabel("Update rate (seconds):   ")
         self.update_edit = QtGui.QSpinBox(main_widget)
-        self.update_edit.setRange(1, 100)
-        print self.update_edit.maximum()
-        print self.update_edit.minimum()
+        self.update_edit.setRange(1, 600)
         self.update_edit.setValue(int(self.settings['update']))
         layout.addRow(update_label, self.update_edit)
 
         past_label = QtGui.QLabel("Past results to show (hours):   ")
         self.past_edit = QtGui.QSpinBox(main_widget)
-        self.past_edit.setRange(1, 100)
+        self.past_edit.setRange(1, 24)
         self.past_edit.setValue(int(self.settings['past']))
         layout.addRow(past_label, self.past_edit)
 
         self.smooth_box = QtGui.QCheckBox("Smooth data (window in minutes):    ", main_widget)
         self.smooth_box.stateChanged.connect(self.smoothToggled)
+        self.smooth_box.setChecked(self.settings['smooth_check'] == 'True')
         self.smooth_edit = QtGui.QSpinBox(main_widget)
-        self.smooth_edit.setRange(1, 100)
+        self.smooth_edit.setRange(1, 120)
         self.smooth_edit.setValue(int(self.settings['smooth']))
         self.smooth_edit.setDisabled(True)
         layout.addRow(self.smooth_box, self.smooth_edit)
 
         self.anomaly_box = QtGui.QCheckBox("Show anomalies (window in minutes):    ", main_widget)
         self.anomaly_box.stateChanged.connect(self.anomalyToggled)
+        self.anomaly_box.setChecked(self.settings['anomaly_check'] == 'True')
         self.anomaly_edit = QtGui.QSpinBox(main_widget)
-        self.anomaly_edit.setRange(1, 100)
+        self.anomaly_edit.setRange(1, 120)
         self.anomaly_edit.setValue(int(self.settings['anomaly']))
         self.anomaly_edit.setDisabled(True)
         layout.addRow(self.anomaly_box, self.anomaly_edit)
@@ -294,6 +302,10 @@ class ResultsWindow(QtGui.QMainWindow):
 
     def loadFile(self, filename):
         """Load in the data from the results file."""
+        
+        self.loadfilecount += 1
+        print "loading file:", self.loadfilecount
+
         try:
             file = open(filename, 'rb')
         except IOError as error:
@@ -338,6 +350,8 @@ class ResultsWindow(QtGui.QMainWindow):
         self.settings['past'] = self.past_edit.value()
         self.settings['anomaly'] = self.anomaly_edit.value()
         self.settings['smooth'] = self.smooth_edit.value()
+        self.settings['anomaly_check'] = self.anomaly_box.isChecked()
+        self.settings['smooth_check'] = self.smooth_box.isChecked()
         self.settings.save()
         self.settings_widget.setDisabled(True)
 
@@ -370,15 +384,26 @@ class ResultsWindow(QtGui.QMainWindow):
 
     def updateGraph(self):
         """Graph the pre-loaded data and add any desired features."""
+        
+        times = self.times
+        targets = self.targets
+        predictions = self.predictions
+        
+        # Step 1: Show only past X hours
+        time_window = int(self.settings['past']) * 60     # Convert to minutes
+        times = times[-time_window:]
+        targets = targets[-time_window:]
+        predictions = predictions[-time_window:]
+        
+        # Step 2: Smoothing
         if self.smooth_box.isChecked():
             smoothing_window = min(self.smooth_edit.value(), len(self.times))
-            self.canvas.graphData(
-                self.times,
-                movingAverage(self.targets, smoothing_window),
-                movingAverage(self.predictions, smoothing_window))
-        else:
-            self.canvas.graphData(self.times, self.targets, self.predictions)
+            targets = movingAverage(targets, smoothing_window)
+            predictions = movingAverage(predictions, smoothing_window)
 
+        self.canvas.graphData(times, targets, predictions)
+        
+        # Step 3: Anomalies
         if self.anomaly_box.isChecked():
             self.showAnomalies()
         else:
@@ -386,7 +411,7 @@ class ResultsWindow(QtGui.QMainWindow):
 
     def showAnomalies(self):
         """Draw colored bars to show regions where anomalies happened."""
-        loading_window = LoadingWindow()
+        #loading_window = LoadingWindow()
         self.options_widget.setDisabled(True)
         self.canvas.clearSpans() #Clear any existing spans
 
@@ -410,12 +435,35 @@ class ResultsWindow(QtGui.QMainWindow):
                     spans.append((start_time, dur, 'green'))
             start += dur
 
-        print "number of spans: ", len(spans)
         self.canvas.colorSpans(spans)
         self.options_widget.setEnabled(True)
-        loading_window.close()
+        #loading_window.close()
 
-
+    def initTimer(self):
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self.updateTimer)
+        self.timer.start(1000)
+        
+    def updateTimer(self):
+        """Start the timer which periodically updates the graph."""
+        if not self.paused:
+            if self.timeout == 0:
+                self.loadFile(RESULTS_FILE)
+                self.timeout = float(self.settings['update'])
+            else:
+                self.timeout -= 1
+            self.update_countdown.setText("Time until next update: %d seconds" % (self.timeout))
+            
+    def pauseTimer(self):
+        """Halt the graph updates until the pause button is pressed again."""
+        if not self.paused:
+            self.paused = True
+            self.pause_button.setText("Continue")
+        else:
+            self.paused = False
+            self.pause_button.setText("Pause")
+            
+            
 class LoadingWindow(QtGui.QDialog):
 
     """Create a "loading window" which has an infinitely running progress bar"""
