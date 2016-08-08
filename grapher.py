@@ -234,11 +234,11 @@ class ResultsWindow(QtGui.QMainWindow):
         layout.addRow(self.settings_widget)
 
         self.edit_button = QtGui.QPushButton("Edit Settings", main_widget)
-        self.edit_button.clicked.connect(self.editOptions)
+        self.edit_button.clicked.connect(self.changeSettings)
         layout.addRow(self.edit_button)
 
         self.reset_button = QtGui.QPushButton("Reset to Default", main_widget)
-        self.reset_button.clicked.connect(self.resetOptions)
+        self.reset_button.clicked.connect(self.resetSettings)
         layout.addRow(self.reset_button)
 
         self.pause_button = QtGui.QPushButton("Pause", main_widget)
@@ -253,42 +253,37 @@ class ResultsWindow(QtGui.QMainWindow):
         self.update_countdown = QtGui.QLabel("Time until next update: %d seconds" % 0)
         layout.addRow(self.update_countdown)
         self.timeout = 0
-
+        
+        self.loadSettings()
+        
         main_widget.setLayout(layout)
         return main_widget
 
     def settingsWidget(self):
         main_widget = QtGui.QWidget(self)
         layout = QtGui.QFormLayout()
-        self.settings = Settings(SETTINGS_FILE)
 
         update_label = QtGui.QLabel("Update rate (seconds):   ")
         self.update_edit = QtGui.QSpinBox(main_widget)
         self.update_edit.setRange(1, 600)
-        self.update_edit.setValue(int(self.settings['update']))
         layout.addRow(update_label, self.update_edit)
 
         past_label = QtGui.QLabel("Past results to show (hours):   ")
         self.past_edit = QtGui.QSpinBox(main_widget)
         self.past_edit.setRange(1, 24)
-        self.past_edit.setValue(int(self.settings['past']))
         layout.addRow(past_label, self.past_edit)
 
         self.smooth_box = QtGui.QCheckBox("Smooth data (window in minutes):    ", main_widget)
         self.smooth_box.stateChanged.connect(self.smoothToggled)
-        self.smooth_box.setChecked(self.settings['smooth_check'] == 'True')
         self.smooth_edit = QtGui.QSpinBox(main_widget)
         self.smooth_edit.setRange(1, 120)
-        self.smooth_edit.setValue(int(self.settings['smooth']))
         self.smooth_edit.setDisabled(True)
         layout.addRow(self.smooth_box, self.smooth_edit)
 
         self.anomaly_box = QtGui.QCheckBox("Show anomalies (window in minutes):    ", main_widget)
         self.anomaly_box.stateChanged.connect(self.anomalyToggled)
-        self.anomaly_box.setChecked(self.settings['anomaly_check'] == 'True')
         self.anomaly_edit = QtGui.QSpinBox(main_widget)
         self.anomaly_edit.setRange(1, 120)
-        self.anomaly_edit.setValue(int(self.settings['anomaly']))
         self.anomaly_edit.setDisabled(True)
         layout.addRow(self.anomaly_box, self.anomaly_edit)
 
@@ -304,13 +299,10 @@ class ResultsWindow(QtGui.QMainWindow):
         """Load in the data from the results file."""
         
         self.loadfilecount += 1
-        print "loading file:", self.loadfilecount
 
         try:
             file = open(filename, 'rb')
         except IOError as error:
-            #raise RuntimeError('Bad results filename')
-            #print "Error: bad results filename"
             print repr(error)
             sys.exit(1)
         else:
@@ -326,26 +318,42 @@ class ResultsWindow(QtGui.QMainWindow):
             except ValueError:
                 self.times = [
                     dt.datetime.strptime(t, DATE_FORMAT) for t in columns[0]]
-
+            
             self.targets = [float(t) for t in columns[1]]
             self.predictions = [float(t) for t in columns[2]]
-            if len(headers) >= 4:
+            if len(columns) >= 4:
                 self.anomalies = [float(t) for t in columns[3]]
+            else:
+                self.anomalies = []
+                self.anomaly_box.setChecked(False)
+                self.anomaly_box.setDisabled(True)
+                self.anomaly_edit.setDisabled(True)
+                self.anomaly_box.setText("Show anomalies (unavailable)")
 
+                
             self.updateGraph()
 
-    def editOptions(self):
+    def loadSettings(self):
+        self.settings = Settings(SETTINGS_FILE)
+        self.update_edit.setValue(int(self.settings['update']))
+        self.past_edit.setValue(int(self.settings['past']))
+        self.smooth_box.setChecked(self.settings['smooth_check'] == 'True')
+        self.smooth_edit.setValue(int(self.settings['smooth']))
+        self.anomaly_box.setChecked(self.settings['anomaly_check'] == 'True')
+        self.anomaly_edit.setValue(int(self.settings['anomaly']))
+            
+    def changeSettings(self):
         """Enables changes to options menu."""
         self.edit_button.setText("Save Changes and Update Graph")
         self.edit_button.clicked.disconnect()
-        self.edit_button.clicked.connect(self.saveOptions)
+        self.edit_button.clicked.connect(self.saveSettings)
         self.settings_widget.setEnabled(True)
 
-    def saveOptions(self):
+    def saveSettings(self):
         """Save changes to options and disable options menu."""
         self.edit_button.setText("Change Settings")
         self.edit_button.clicked.disconnect()
-        self.edit_button.clicked.connect(self.editOptions)
+        self.edit_button.clicked.connect(self.changeSettings)
         self.settings['update'] = self.update_edit.value()
         self.settings['past'] = self.past_edit.value()
         self.settings['anomaly'] = self.anomaly_edit.value()
@@ -354,19 +362,17 @@ class ResultsWindow(QtGui.QMainWindow):
         self.settings['smooth_check'] = self.smooth_box.isChecked()
         self.settings.save()
         self.settings_widget.setDisabled(True)
-
-        print "options saved"
         self.updateGraph()
 
     # Reset the settings to default and draw the original graph
-    def resetOptions(self):
+    def resetSettings(self):
         self.update_edit.setValue(5)
         self.past_edit.setValue(24)
         self.smooth_edit.setValue(1)
         self.anomaly_edit.setValue(1)
         self.smooth_box.setCheckState(QtCore.Qt.Unchecked)
         self.anomaly_box.setCheckState(QtCore.Qt.Unchecked)
-        self.saveOptions()
+        self.saveSettings()
 
     def smoothToggled(self, state):
         """Enable or disable data smoothing based on 'state'."""
