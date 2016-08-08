@@ -11,6 +11,8 @@ used across the various programs in this repository
 
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 ICON_FILE = 'app/merit_icon.png'
+SETTINGS_FILE = 'app/settings.txt'
+RESULTS_FILE = 'results.csv'
 
 SMART_DRIVER = 'config/smartDriver.json'
 DB_CONFIG = 'config/config.txt'

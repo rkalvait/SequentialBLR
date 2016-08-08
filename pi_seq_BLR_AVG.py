@@ -69,7 +69,6 @@ np.set_printoptions(precision=3, linewidth=200)
 ##### PARAMETERS #####
 XLOG_FILENAME = "X_DATA.bak"
 Xog_LOG_FILENAME = "Xog_DATA.bak"
-RESULTS = 'results.csv'
 SECS_PER_MIN = 60
 MINS_PER_HOUR = 60
 HOURS_PER_DAT = 24
@@ -305,7 +304,7 @@ while True:
             y_predict = y_predict[-matrix_length:]
             anomaly = anomaly[-matrix_length:]
 
-        writeResults(RESULTS, (y_time, y_target, y_predict, anomaly))
+        writeResults(RESULTS_FILE, (y_time, y_target, y_predict, anomaly))
 
         print "Target:", target, 
         print "Prediction:", prediction
