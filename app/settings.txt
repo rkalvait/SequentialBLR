@@ -1,5 +1,5 @@
 update=5
-past=3
+past=6
 smooth_check=False
 smooth=1
 anomaly_check=True

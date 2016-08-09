@@ -131,8 +131,8 @@ class ResultsGraph(FigureCanvas):
         xmax = max(times)
         ymin = 0
         ymax = max(max(target), max(predict)) * 1.1
-        emin = min(error)
-        emax = max(error)
+        emin = min(min(error) * 1.1, 0)
+        emax = max(max(error) * 1.1, 0)
         self.graph_power.set_xlim(xmin, xmax)
         self.graph_power.set_ylim(ymin, ymax)
         self.graph_error.set_xlim(xmin, xmax)
@@ -150,7 +150,7 @@ class ResultsGraph(FigureCanvas):
         for span in spans:
             start = span[0]
             end = start + dt.timedelta(minutes=span[1])
-            span = self.graph_power.axvspan(xmin=start, xmax=end, color=span[2], alpha=0.15)
+            span = self.graph_power.axvspan(xmin=start, xmax=end, color=span[2], alpha=0.2)
             self.color_spans.append(span)
         self.fig.tight_layout()
         self.draw()
@@ -379,20 +379,18 @@ class ResultsWindow(QtGui.QMainWindow):
 
     def updateGraph(self):
         """Graph the pre-loaded data and add any desired features."""
-        times = self.times
-        targets = self.targets
-        predictions = self.predictions
-        
+
         # Step 1: Show only past X hours
         time_window = int(self.settings['past']) * 60     # Convert to minutes
-        times = times[-time_window:]
-        targets = targets[-time_window:]
-        predictions = predictions[-time_window:]
+        times = self.times[-time_window:]
+        targets = self.targets[-time_window:]
+        predictions = self.predictions[-time_window:]
+        anomalies = self.anomalies[-time_window:]
         
         # Step 2: Smoothing
         if self.settings['smooth_check'] == 'True':
             smoothing_window = int(self.settings['smooth'])
-            smoothing_window = min(smoothing_window, len(self.times))
+            smoothing_window = min(smoothing_window, len(times))
             targets = movingAverage(targets, smoothing_window)
             predictions = movingAverage(predictions, smoothing_window)
 
@@ -400,11 +398,11 @@ class ResultsWindow(QtGui.QMainWindow):
         
         # Step 3: Anomalies
         if self.settings['anomaly_check'] == 'True':
-            self.showAnomalies()
+            self.showAnomalies(times, anomalies)
         else:
             self.canvas.clearSpans()
 
-    def showAnomalies(self):
+    def showAnomalies(self, times, anomalies):
         """Draw colored bars to show regions where anomalies happened."""
         self.options_widget.setDisabled(True)
         self.canvas.clearSpans() #Clear any existing spans
@@ -415,10 +413,10 @@ class ResultsWindow(QtGui.QMainWindow):
         level3 = level2 * 2
         spans = []  # List of color spans
 
-        while start < len(self.anomalies):
+        while start < len(times):
             #Count number of anomalies and choose a corresponding color
-            start_time = self.times[start]
-            count = sum(self.anomalies[start:(start + dur)])
+            start_time = times[start]
+            count = sum(anomalies[start:(start + dur)])
             if count > 0:
                 if count > level3:
                     spans.append((start_time, dur, 'red'))
