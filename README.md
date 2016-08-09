@@ -96,6 +96,10 @@ The program will update automatically every few seconds.
 This update rate, as well as the amount of past data to show, can be configured by the user.
 In addition, the program can smooth the data to eliminate large spikes or uneven areas, making general trends easier to see.
 
+The main algorithm script (`pi_seq_BLR_AVG.py`) is automatically configured to leave behind a `results.csv` file in the current directory.
+This is the file that the grapher program looks for and uses to graph the results of the analysis.
+Please keep this in mind and do not alter the `results.csv` file or change these path names in either script, or they will not work as intended.
+
 ##Development
 Please feel free to use "Issues" feature of our Github page to report issues or recommend improvements.
 We are always looking to improve and we appreciate feedback of any kind.
