@@ -59,40 +59,37 @@ class Algo(object):
         self.init_training = False
         self.using_backup = False
         self.row_count = 0
-
-        # Results
-        '''
-        self.y_time = []
-        self.y_target = []
-        self.y_predict = []
-        self.anomalies = []
-        self.results_file = RESULTS_FILENAME
-        '''
+        
+        # EMA parameter
+        self.alpha = 1.0
 
     # Read the previous training window from a backup file
+    # Raises an exception if file does not exist or is not
+    # properly formatted
     def fromBackup(self, filename=X_BACKUP_FILENAME):
 
         self.X_backup_file = filename
         self.using_backup = True
 
-        # Attempt to read the given backup file name
-        try:
-            with open(filename, 'rb') as infile:
-                X_backup = pickle.load(infile)
-        except IOError:
-            print "***WARNING: No training backup found.***"
-        else:
-            if (np.shape(X_backup) == np.shape(self.x)):
-                print "Training backup file found..."
-                self.X = X_backup
-                self.init_training = True
+        # Exceptions are not ignored and allowed to propogate up
+        with open(filename, 'rb') as infile:
+            X_backup = pickle.load(infile)
+            if (np.shape(X_backup) == np.shape(self.X)):
+                # Add each row individually
+                for row in X_backup:
+                    self.run(row)
             else:
-                print "Unable to use training backup. Continuing analysis without backup..."
-                pass
+                raise RuntimeError("Backup not properly sized.")
 
     # Add new data, train
     def run(self, new_data):
-
+    
+        if self.row_count == 0:
+            self.last_avg = new_data
+        else:
+            new_data = (1 - self.alpha)*self.last_avg + self.alpha*new_data
+            self.last_avg = new_data[:]
+        
         self.addData(new_data)
 
         # Check if it's time to train
@@ -107,15 +104,16 @@ class Algo(object):
             x_test = new_data[:-1]
             
             # Update variance (sigma)
-            self.sigma = np.sqrt(1/self.b_opt + np.dot(np.transpose(x_test), np.dot(self.S_N, x_test)))
+            self.sigma = np.sqrt(1/self.b_opt + np.dot(np.transpose(x_test), 
+                                                       np.dot(self.S_N, x_test)))
             
             # Catching pathogenic cases where variance gets too small
             if self.sigma < 1: 
                 self.sigma = 1
                 
-            return prediction
+            return target, prediction
         else:
-            return None
+            return new_data[-1], None
             
     # Update severity metric and check for anomaly
     # Return true if anomaly is detected, false otherwise
@@ -150,6 +148,7 @@ class Algo(object):
 
     # Train the model
     def train(self):
+    
         # Unwrap the matrices (put the most recent data on the bottom)
         pivot = self.row_count % self.matrix_length
         data = self.X[pivot:, :self.num_features]
@@ -158,6 +157,7 @@ class Algo(object):
         y = np.concatenate((y, self.X[:pivot, self.num_features]), axis=0)
 
         if (self.init_training or runnable(data) > 0.5):
+            #self.w_opt, self.a_opt, self.b_opt, self.S_N = normalTrain(data, y)
             self.w_opt, self.a_opt, self.b_opt, self.S_N = train(data, y)
             self.init_training = True
             
@@ -177,5 +177,9 @@ class Algo(object):
         self.L = L
         self.THRESHOLD = self.L * np.sqrt(self.w/(2-self.w))
         print "w = %.3f, L = %.3f, THRESHOLD = %.3f" % (self.w, self.L,self.THRESHOLD)
+        
+    def setEMAParameter(self, alpha):
+        self.alpha = alpha
+        print "alpha: %.3f" % alpha
 
 

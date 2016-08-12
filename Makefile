@@ -8,7 +8,7 @@ install_all:
 	sudo apt-get install python-numpy
 	sudo apt-get install python-scipy
 	sudo apt-get install python-pymssql
-    sudo apt-get install python-qt4
+	sudo apt-get install python-qt4
 
 clean:
 	rm -rf *.pyo *.pyc
