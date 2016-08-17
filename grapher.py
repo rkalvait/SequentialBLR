@@ -4,18 +4,18 @@
 # Contributors:     apadin
 # Start Date:       2016-06-24
 
-"""Updated version of grapher using PyQt4.
+"""Shows visualizations of live incoming analysis results from pi_seq_BLR.py
 
 This program graphs CSV files with the following format:
 
 Timestamp,Target,Prediction,Anomaly
 <timestamp>, <target>, <prediction>, <anomaly>
 
-ex)
+Example:
 
-Timestamp,Target,Prediction,Anomaly
-1464763755,9530,9683,0
-1464763815,8635,9150,1
+    Timestamp,Target,Prediction,Anomaly
+    1464763755,9530,9683,0
+    1464763815,8635,9150,1
 
 - <timestamp> is an integer representing a UTC timestamp
 - <target> and <prediction> are power values in Watts
