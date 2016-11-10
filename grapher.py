@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-# Filename:         grapher2.py
+# Filename:         grapher.py
 # Contributors:     apadin
 # Start Date:       2016-06-24
 
-"""Shows visualizations of live incoming analysis results from pi_seq_BLR.py
+"""
+Shows visualizations of live incoming analysis results from pi_seq_BLR.py
 
 This program graphs CSV files with the following format:
 
