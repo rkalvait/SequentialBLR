@@ -107,7 +107,6 @@ class ResultsGraph(FigureCanvas):
         self.graph_error.xaxis.set_major_locator(LinearLocator(numticks=5))
 
         # Add a legend
-        print "Legend goes here"
         self.graph_power.legend([self.target_line, self.predict_line], ['Actual Value', 'Predicted Value'])
         self.graph_error.legend([self.error_line], ['Error Value (kW)'])
 
