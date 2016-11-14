@@ -11,4 +11,5 @@ app/*
 *config.json
 *sensors.json
 bfg.jar
+*temp*
 

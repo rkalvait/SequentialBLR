@@ -106,10 +106,15 @@ class ResultsGraph(FigureCanvas):
         self.graph_power.xaxis.set_major_locator(LinearLocator(numticks=5))
         self.graph_error.xaxis.set_major_locator(LinearLocator(numticks=5))
 
+        # Add a legend
+        print "Legend goes here"
+        self.graph_power.legend([self.target_line, self.predict_line], ['Actual Value', 'Predicted Value'])
+        self.graph_error.legend([self.error_line], ['Error Value (kW)'])
+
         # Rotate dates slightly
         plt.setp(self.graph_power.get_xticklabels(), rotation=10)
         plt.setp(self.graph_error.get_xticklabels(), rotation=10)
-
+                
         # Let graph expand with window
         self.setSizePolicy(QtGui.QSizePolicy.Expanding,
                            QtGui.QSizePolicy.Expanding)
