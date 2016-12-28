@@ -75,7 +75,7 @@ In the example above, this would mean predictions will start being made after 24
 
 ####Sound
 
-In our implementation, we also used a USB microphone to record sound levels as another input. To use a USB microphone, simply plug it into any USB on the Raspberry Pi and make sure you have *arecord* and *SoX anylazer* installed on your machine(if not follow instructions on README.sound.md) and run pi_seq_BLR_AVG with `-s` flag. You can also test your microphone using the `noise.py` script included. If you the 
+In our implementation, we also used a USB microphone to record sound levels as another input. To use a USB microphone, simply plug it into any USB on the Raspberry Pi and make sure you have *arecord* and *SoX anylazer* installed on your machine(if not follow instructions on `README.sound.md`) and run pi_seq_BLR_AVG with `-s` flag. You can also test your microphone using the `noise.py` script included. If you the 
 
 ####Logging
 The program is configured to leave behind a log of its past predictions in the following location:
