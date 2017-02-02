@@ -1,6 +1,6 @@
-update=30
+update=60
 past=24
-smooth_check=True
+smooth_check=False
 smooth=30
 anomaly_check=True
-anomaly=10
+anomaly=20

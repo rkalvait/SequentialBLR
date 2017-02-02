@@ -3,6 +3,7 @@
 *.bak
 *.csv
 *.log
+*.json
 *figures*
 *results*
 *test*

@@ -1,0 +1,10 @@
+{
+"input_file": "ne_data_20161111_to_20161127.csv",
+"granularity": 1,
+"training_window": 2,
+"training_interval": 1,
+"ema_alpha": 1.0,
+"severity_omega": 1.0,
+"severity_lambda": 3.719,
+"auto_regression": 1
+}

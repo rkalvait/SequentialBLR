@@ -27,7 +27,7 @@ class Algo(object):
     def __init__(self, granularity, training_window, forecasting_interval, num_features):
 
         # granularity           -> time between measurements
-        #y_B matrix_length         -> number of data points to train on
+        # matrix_length         -> number of data points to train on
         # forecasting_interval  -> number of data points between re-training sessions
         # num_features          -> number of features to train on
         self.granularity = int(granularity)
@@ -113,7 +113,7 @@ class Algo(object):
                 
             return target, prediction
         else:
-            return new_data[-1], None
+            return self.last_avg[-1], None
             
     # Update severity metric and check for anomaly
     # Return true if anomaly is detected, false otherwise
