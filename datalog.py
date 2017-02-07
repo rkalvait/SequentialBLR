@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Filename:     datalog.py
 # Authors:      apadin, yabskbd, mjmor, dvorva
 # Start Date:   5/9/2016
@@ -14,7 +15,8 @@ device information so that the data can be analyzed later
 import sys
 import time
 import datetime as dt
-import pandas as pd
+#import pandas as pd
+import csv
 import zway
 
 
@@ -36,9 +38,8 @@ def get_fname(prefix, server):
     except IOError:
         header = server.device_IDs()
         header.insert(0, "timestamp")
-        header = pd.DataFrame([header]).to_csv(index=False, header=False)
         with open(fname, 'wb') as fh:
-            fh.write(header)
+            csv.writer(fh).write(header)
     return fname
 
         
@@ -52,7 +53,7 @@ def main(argv):
     # Timing procedure
     granularity = 60
     goal_time = time.time()
-    goal_time = int(goal_time) + granularity - (int(time.time()) % granularity)
+    #goal_time = int(goal_time) + granularity - (int(time.time()) % granularity)
 
     while(True):
         
@@ -63,11 +64,9 @@ def main(argv):
         
         data = get_all_data(server)
         data.insert(0, goal_time)
-        data = pd.DataFrame([data]).to_csv(index=False, header=False)
-        
         fname = get_fname(prefix, server)
-        with open(fname, 'ab') as data_fh:
-            data_fh.write(data)
+        with open(fname, 'wb') as fh:
+            csv.writer(fh).write(data)
 
 
 if __name__ == '__main__':

@@ -36,7 +36,7 @@ import requests
 
 class Server(object):
 
-    def __init__(self, host, port, device_dict={}):
+    def __init__(self, host='127.0.0.1', port=8083, device_dict={}):
         """
         Initialize connection to the network and obtain
         a list of available devices.
