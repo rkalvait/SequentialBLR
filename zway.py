@@ -15,6 +15,13 @@ a way to parse this information from the devices page.
 
 - Adrian Padin, 1/20/2017
 
+UPDATE: Thanks to some clever scanning mechanisms and shortcuts,
+this script no longer requires knowledge of the devices on the
+Zway network. When the object is instantiated, it scans the
+ZWave API for device information and saves it for later use.
+
+- Adrian Padin, 2/7/2017
+
 """
 
 
@@ -33,19 +40,29 @@ class Server(object):
         Initialize connection to the network and obtain
         a list of available devices.
         """
-                
-        # Check connection to the host
+        self.timeout = 2.0
         self.base_url = "http://{}:{}/ZWaveAPI/".format(host, port)
-        try:
-            requests.post(self.base_url + "Data")
-        except Exception:
-            raise Exception("connection could not be established")
-        
+
+        # Check connection to the host
+        num_attempts = 5
+        for attempt in xrange(num_attempts):
+            try:
+                self._make_request("Data")
+            except Exception:
+                if (attempt == num_attempts-1):
+                    raise Exception("connection could not be established")
+            else:
+                break
+            
         # Obtain device dictionary
         if (device_dict == {}):
             self.update_devices()
         else:
             self.devices = device_dict
+            
+    def set_timeout(self, timeout):
+        """Set the timeout period in seconds."""
+        self.timeout = float(timeout)
 
     def update_devices(self):
         """
@@ -54,7 +71,7 @@ class Server(object):
         """
         
         self.devices = {}
-        devices_page = requests.post(self.base_url + "Run/devices").json()
+        devices_page = requests.get(self.base_url + "Run/devices").json()
 
         for device_id_base in devices_page:
             device_count = 0
@@ -81,27 +98,27 @@ class Server(object):
                                 self.devices[device_id]['data'] = data_dict
                                 device_count += 1
                                 
-                                sensor_type = self.sensor_type(device_id)
-                                sensor_type = sensor_type.replace(' ', '_')
-                                name = device_id_base + '_' + sensor_type
+                                device_type = self.device_type(device_id)
+                                device_type = device_type.replace(' ', '_')
+                                name = device_id_base + '_' + device_type
                                 self.devices[device_id]['name'] = name
 
         return self.devices
     
     def device_IDs(self):
-        """Return a list of available device IDs"""
-        return self.devices.keys()
+        """Return a sorted list of available device IDs"""
+        return sorted(self.devices.keys())
 
     def software_version(self):
         """Get the version of ZWay software running on this server"""
         command = self.base_url + "Data"
-        Data_dict = requests.post(self.base_url + command).json()
+        Data_dict = requests.get(self.base_url + command).json()
         return Data_dict['controller']['data']['softwareRevisionVersion']
         
     def battery_level(self, device_id):
         instance = self.devices[str(device_id)]['data']['instance_num']
         command = "Run/devices[{}].instances[0].Battery.data.last.value".format(device_id, instance)
-        battery_percent = requests.post(self.base_url + command).content
+        battery_percent = requests.get(self.base_url + command).content
         return int(battery_percent)
         
     def get_data(self, device_id):
@@ -117,19 +134,19 @@ class Server(object):
         # Update the device
         command = "Run/devices[{}].instances[{}].commandClasses[{}].Get(sensorType=-1)"
         command = command.format(device, instance_num, command_class)
-        requests.post(self.base_url + command).content
+        requests.get(self.base_url + command).content
 
         # Retrieve data
         command = "Run/devices[{}].instances[{}].commandClasses[{}].data[{}].{}"
         command = command.format(device, instance_num, command_class, data_num, suffix)
-        data = requests.post(self.base_url + command).content
+        data = requests.get(self.base_url + command).content
         
         if (data_type == 'bool'):
             data = 1 if (data == 'true') else 0
         
         return float(data)
         
-    def sensor_type(self, device_id):
+    def device_type(self, device_id):
         """Return string representing the type of data from this device."""
         device_id = str(device_id)
         device        = int(float(device_id))
@@ -140,9 +157,9 @@ class Server(object):
         # Issue the command
         command = "Run/devices[{}].instances[{}].commandClasses[{}].data[{}].sensorTypeString.value"
         command = command.format(device, instance_num, command_class, data_num)
-        return requests.post(self.base_url + command).content
+        return requests.get(self.base_url + command).content
         
-    def sensor_name(self, device_id):
+    def device_name(self, device_id):
         """Return string representing the name of this device."""
         return self.devices[device_id]['name']
         
@@ -150,9 +167,20 @@ class Server(object):
         """Prints device dictionary to a file-like object in json format."""
         json.dump(self.devices, fh)
 
-''' Future Updates
+    def _make_request(self, command):
+        """
+        Returns the content of the page given by the command appended
+        to the end of the base URL.
+        The base URL is of the form: "http://YOUR.IP.GOES.HERE:PORT/ZWaveAPI/"
+    
+        This can be used as a back door for making any Zway request
+        not currently supported. Handles disconnection errors and other issues.
+        """
+        try:
+            page = requests.get(self.base_url + command, timeout=self.timeout)            
+        except requests.exceptions.ConnectionError:
+            raise Exception("server did not respond, connection is lost")
 
-To get type of sensor:
-    results['0']['commandClasses']['49']['data']['1']['sensorTypeString']['value']
-
-'''
+    
+    
+    
