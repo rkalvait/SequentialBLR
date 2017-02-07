@@ -39,7 +39,7 @@ def get_fname(prefix, server):
         header = server.device_IDs()
         header.insert(0, "timestamp")
         with open(fname, 'wb') as fh:
-            csv.writer(fh).write(header)
+            csv.writer(fh).writerow(header)
     return fname
 
         
@@ -51,9 +51,8 @@ def main(argv):
     server = zway.Server(host, port)
     
     # Timing procedure
-    granularity = 60
-    goal_time = time.time()
-    #goal_time = int(goal_time) + granularity - (int(time.time()) % granularity)
+    granularity = 5
+    goal_time = int(time.time())
 
     while(True):
         
@@ -65,8 +64,8 @@ def main(argv):
         data = get_all_data(server)
         data.insert(0, goal_time)
         fname = get_fname(prefix, server)
-        with open(fname, 'wb') as fh:
-            csv.writer(fh).write(data)
+        with open(fname, 'ab') as fh:
+            csv.writer(fh).writerow(data)
 
 
 if __name__ == '__main__':
