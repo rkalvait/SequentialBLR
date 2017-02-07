@@ -2,7 +2,8 @@
 # Authors:      apadin, mjmor, yabskbd, dvorva
 # Start Date:   5/9/2016
 
-"""Interface for gathering data from ZWave devices running
+"""
+Interface for gathering data from ZWave devices running
 on a ZWay server.
 
 This python library is effectively a wrapper for the existing
@@ -181,6 +182,3 @@ class Server(object):
         except requests.exceptions.ConnectionError:
             raise Exception("server did not respond, connection is lost")
 
-    
-    
-    
