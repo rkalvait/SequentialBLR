@@ -15,8 +15,8 @@ device information so that the data can be analyzed later
 import sys
 import time
 import datetime as dt
-#import pandas as pd
 import csv
+
 import zway
 
 
@@ -51,7 +51,7 @@ def main(argv):
     server = zway.Server(host, port)
     
     # Timing procedure
-    granularity = 5
+    granularity = 60
     goal_time = int(time.time())
 
     while(True):
