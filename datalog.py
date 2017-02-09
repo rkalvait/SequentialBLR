@@ -16,7 +16,6 @@ import sys
 import time
 import datetime as dt
 import csv
-
 import zway
 
 
@@ -24,24 +23,51 @@ import zway
 
 def get_all_data(server):
     """
-    Accepts a zway.Server object and returns data for all connected devices."""
+    Accepts a zway.Server object and returns data for all connected devices.
+    """
     return [server.get_data(id) for id in server.device_IDs()]
 
-def get_fname(prefix, server):
-    """
-    Return the name of the file to be appended to
-    Also checks if a new file must be made (new file made every day)
-    """
-    fname = "{}_{}.csv".format(prefix, dt.date.today())
-    try:
-        fh = open(fname, 'rb')
-    except IOError:
-        header = server.device_IDs()
-        header.insert(0, "timestamp")
-        with open(fname, 'wb') as fh:
-            csv.writer(fh).writerow(header)
-    return fname
 
+#==================== CLASSES ====================#
+    
+class Datalog(object):
+    """Wrapper for reading and writing sequential data to CSV files"""
+    
+    def __init__(self, prefix, header):
+        """
+        Specify the prefix of the files you want to write.
+        - prefix: The files will have the format "prefix_YYYY-MM-DD.csv"
+        - header: List of names of each column (exclude "timestamp")
+        """
+        self.prefix = prefix
+        self.header = header
+        self.header.insert(0, "timestamp")
+        self.last_fname = None
+        
+    def log(self, sample, timestamp=time.time()):
+        """
+        Add a new sample to the correct file.
+        - sample: List of values to be written (excluding timestamp)
+        """
+        date = dt.date.fromtimestamp(timestamp)
+        fname = "{}_{}.csv".format(self.prefix, date)
+
+        # If the file does not exist, make a new one
+        try:
+            with open(fname, 'rb') as fh:
+                pass
+        except IOError:
+            with open(fname, 'wb') as fh:
+                csv.writer(fh).writerow(self.header)
+
+        # Record the sample
+        sample.insert(0, timestamp)
+        with open(fname, 'ab') as fh:
+            csv.writer(fh).writerow(sample)
+                
+    def read_range(self, start, end):
+        pass
+        
         
 def main(argv):
     """Connect to server and start the logging process."""
@@ -49,9 +75,11 @@ def main(argv):
     port = argv[2]
     prefix = argv[3]
     server = zway.Server(host, port)
+    device_list = server.device_IDs()
+    log = Datalog('adrian', device_list)
     
     # Timing procedure
-    granularity = 60
+    granularity = 10
     goal_time = int(time.time())
 
     while(True):
@@ -59,14 +87,9 @@ def main(argv):
         while goal_time > time.time():
             time.sleep(0.2)
         goal_time = goal_time + granularity
-        print "sample at time", goal_time
+        print "sample at time", dt.datetime.fromtimestamp(goal_time)
         
-        data = get_all_data(server)
-        data.insert(0, goal_time)
-        fname = get_fname(prefix, server)
-        with open(fname, 'ab') as fh:
-            csv.writer(fh).writerow(data)
-
+        log.log(get_all_data(server), goal_time)
 
 if __name__ == '__main__':
     main(sys.argv)
