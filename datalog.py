@@ -74,9 +74,15 @@ def main(argv):
     host = argv[1]
     port = argv[2]
     prefix = argv[3]
-    server = zway.Server(host, port)
+    try:
+        server = zway.Server(host, port, username=argv[4], password=argv[5])
+        username = argv[4]
+        password = argv[5]
+    except Exception:
+        server = zway.Server(host, port)
+
     device_list = server.device_IDs()
-    log = Datalog('adrian', device_list)
+    log = Datalog(prefix, device_list)
     
     # Timing procedure
     granularity = 10
