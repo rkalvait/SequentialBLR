@@ -27,8 +27,30 @@ ZWave API for device information and saves it for later use.
 
 
 #==================== LIBRARIES ====================#
+import os
 import json
 import requests
+
+
+#==================== FUNCTIONS ====================#
+
+def start_session(username, password):
+    cookie_file = 
+    request = 'curl -i -H "Accept: application/json" -H "content-type: application/json" -X POST -d '
+    request += "'"
+    request += '{"form": true, "login": "' + username + '", "password": "'+password+'", "keepme": false, "default_ui": 1}'
+    request += "' localhost:8083/ZAutomation/api/v1/login -c cookie.txt"
+
+    print request
+    os.system(request)
+    
+    print ""
+    cookie_file = open('cookie.txt')
+    sessID = ""
+    for line in cookie_file:
+        if 'ZWAYSession' in line:
+            sessID = line.split()[6]
+    return sessID
 
 
 #==================== CLASSES ====================#
@@ -42,10 +64,10 @@ class Server(object):
         """
         self.timeout = 2.0
         self.base_url = "http://{}:{}/ZWaveAPI/".format(host, port)
+
+        # Check if authorization is needed
         if (username != ""):
-            self.auth = (username, password)
-        else:
-            self.auth = None
+            self.start_session(username, password)
 
         # Check connection to the host
         num_attempts = 5
@@ -111,7 +133,7 @@ class Server(object):
 
     def device_IDs(self):
         """Return a sorted list of available device IDs"""
-        return sorted(self.devices.keys())
+        return sorted(self.devices.keys(), key=float)
 
     def software_version(self):
         """Get the version of ZWay software running on this server"""
