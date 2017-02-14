@@ -35,21 +35,22 @@ import requests
 #==================== FUNCTIONS ====================#
 
 def start_session(username, password):
-    cookie_file = 
-    request = 'curl -i -H "Accept: application/json" -H "content-type: application/json" -X POST -d '
-    request += "'"
-    request += '{"form": true, "login": "' + username + '", "password": "'+password+'", "keepme": false, "default_ui": 1}'
-    request += "' localhost:8083/ZAutomation/api/v1/login -c cookie.txt"
+    cookie_file = 'cookie.txt' 
+    request = "curl -i -H \"Accept: application/json\" -H \"content-type: application/json\" -X POST -d '"
+    request += "{\"form\": true, \"login\": \"{}\", \"password\": \"{}\", \"keepme\": false, \"default_ui\": 1}"
+    request.format(username, password)
+    request += "' localhost:8083/ZAutomation/api/v1/login -c " + cookie_file
 
     print request
     os.system(request)
     
     print ""
-    cookie_file = open('cookie.txt')
     sessID = ""
-    for line in cookie_file:
-        if 'ZWAYSession' in line:
-            sessID = line.split()[6]
+    with open(cookie_file) as cookie_fh:
+        for line in cookie_file:
+            if 'ZWAYSession' in line:
+                sessID = line.split()[6]
+                return sessID
     return sessID
 
 
@@ -67,7 +68,9 @@ class Server(object):
 
         # Check if authorization is needed
         if (username != ""):
-            self.start_session(username, password)
+            self.cookie = {'ZWAYSession': start_session(username, password)}
+        else:
+            self.cookie = None
 
         # Check connection to the host
         num_attempts = 5
@@ -203,10 +206,10 @@ class Server(object):
         not currently supported. Handles disconnection errors and other issues.
         """
         try:
-            if (self.auth != None):
+            if (self.cookie == None):
                 page = requests.get(self.base_url + command, timeout=self.timeout)
             else:
-                page = requests.get(self.base_url + command, timeout=self.timeout, auth=self.auth)
+                page = requests.get(self.base_url + command, timeout=self.timeout, cookie=self.cookie)
         except requests.exceptions.ConnectionError:
             raise Exception("server did not respond, connection is lost")
         else:
